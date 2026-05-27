@@ -12,6 +12,70 @@ import {
 export default function Home() {
   const [activeStep, setActiveStep] = useState(0);
   const [activeNode, setActiveNode] = useState<string | null>(null);
+  const [simState, setSimState] = useState<"idle" | "nearby" | "verify" | "processing" | "success" | "receipt">("idle");
+  const [simProgress, setSimProgress] = useState(0);
+  const [simLogs, setSimLogs] = useState<string[]>([]);
+  const [activeVertical, setActiveVertical] = useState<"metro" | "society" | "campus" | "retail">("metro");
+  const [activePipeStep, setActivePipeStep] = useState<number | null>(null);
+  
+  const triggerSimulation = () => {
+    if (simState !== "idle") return;
+    setSimState("nearby");
+    setSimLogs(["Scanning BLE spectra...", "Detected 2.4GHz beacon from Starbucks ID: STB-8890", "Distance calculated: 0.35m"]);
+    
+    setTimeout(() => {
+      setSimState("verify");
+      setSimLogs(prev => [...prev, "Proximity threshold cleared. Starting Enclave Session...", "Awaiting touchless gesture confirmation...", "Processing hand landmarks..."]);
+      
+      let p = 0;
+      const interval = setInterval(() => {
+        p += 10;
+        setSimProgress(p);
+        if (p >= 100) {
+          clearInterval(interval);
+          setSimState("processing");
+          setSimLogs(prev => [...prev, "Gesture confirmed (100% match)", "Compiling cryptographic token hash...", "Routing to UPI Lite network gateway..."]);
+          
+          setTimeout(() => {
+            setSimState("success");
+            setSimLogs(prev => [...prev, "Gateway response: CODE-200 (Success)", "UPI Ref: 438912889120", "Ledger settled in 0.72s"]);
+            
+            // play double high-fidelity chime
+            try {
+              const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const playChime = (freq: number, delay: number, dur: number) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + dur);
+                osc.start(audioCtx.currentTime + delay);
+                osc.stop(audioCtx.currentTime + delay + dur);
+              };
+              playChime(660, 0, 0.15); // E5
+              playChime(880, 0.08, 0.25); // A5
+            } catch (e) {
+              console.log("Audio contexts blocked or unsupported");
+            }
+            
+            setTimeout(() => {
+              setSimState("receipt");
+            }, 2000);
+          }, 1500);
+        }
+      }, 100);
+    }, 2000);
+  };
+
+  const resetSimulation = () => {
+    setSimState("idle");
+    setSimProgress(0);
+    setSimLogs([]);
+  };
+
   const [liveTxns, setLiveTxns] = useState([
     { id: 1, name: "Starbucks Register 3", amount: 340, time: "Just now", city: "Mumbai", verified: "On-Device Handpose" },
     { id: 2, name: "Metro Gate 4 Transit", amount: 45, time: "1 min ago", city: "Delhi", verified: "NFC Ring Bypass" },
@@ -95,7 +159,7 @@ export default function Home() {
               className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-500/20 bg-brand-500/5 text-xs font-semibold text-brand-500 mb-6"
             >
               <Zap size={12} className="animate-pulse" />
-              <span>THE NEXT-GEN UPI STANDARDS</span>
+              <span>INDIA'S FIRST AMBIENT TOUCHLESS PROTOCOL</span>
             </motion.div>
 
             <motion.h1 
@@ -104,7 +168,7 @@ export default function Home() {
               transition={{ delay: 0.1 }}
               className="font-display text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-[1.1] mb-6"
             >
-              Payments at the speed of a <span className="text-gradient-purple font-extrabold">gesture.</span>
+              Complete UPI payments in <span className="text-gradient-purple font-extrabold">under 1 second.</span>
             </motion.h1>
 
             <motion.p 
@@ -113,7 +177,7 @@ export default function Home() {
               transition={{ delay: 0.2 }}
               className="text-zinc-400 text-lg md:text-xl max-w-xl mb-8 leading-relaxed"
             >
-              HoverPay utilizes background BLE ambient scans and touchless gesture models to bypass standard QR codes, confirming payments instantly in under 1 second.
+              Wave. Pay. Go. Connect to localized merchant beacons and verify intent ambiently without ever opening your wallet, tapping screens, or scanning a QR code.
             </motion.p>
 
             <motion.div 
@@ -123,11 +187,15 @@ export default function Home() {
               className="flex flex-col sm:flex-row gap-4"
             >
               <Link href="/pay" className="px-6 py-4 bg-brand-500 text-black font-bold rounded-xl hover:bg-brand-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-500/10">
-                Try Touchless Demo <ArrowRight size={18} />
+                Launch Live App <ArrowRight size={18} />
               </Link>
-              <Link href="/dashboard" className="px-6 py-4 bg-white/5 border border-white/10 hover:border-white/20 text-white font-semibold rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-2">
-                Open Smart Wallet
-              </Link>
+              <button 
+                onClick={triggerSimulation}
+                disabled={simState !== "idle"}
+                className="px-6 py-4 bg-white/5 border border-white/10 hover:border-white/20 text-white font-semibold rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {simState === "idle" ? "Simulate Ambient Pay" : "Simulation In Progress..."}
+              </button>
             </motion.div>
 
             {/* Micro Stats */}
@@ -138,16 +206,16 @@ export default function Home() {
               className="grid grid-cols-3 gap-6 border-t border-white/5 pt-10 mt-12"
             >
               <div>
-                <p className="text-2xl font-bold text-white font-display">0.8s</p>
+                <p className="text-2xl font-bold text-white font-display">0.72s</p>
                 <p className="text-xs text-zinc-500 mt-1">Average Latency</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-white font-display">0.01%</p>
+                <p className="text-2xl font-bold text-white font-display">0.002%</p>
                 <p className="text-xs text-zinc-500 mt-1">Fraud Risk Score</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-white font-display">Zero</p>
-                <p className="text-xs text-zinc-500 mt-1">Tap Interaction</p>
+                <p className="text-xs text-zinc-500 mt-1">Accidental Scans</p>
               </div>
             </motion.div>
           </div>
@@ -161,7 +229,7 @@ export default function Home() {
               className="relative w-full max-w-sm"
             >
               {/* Glow effects */}
-              <div className="absolute -inset-1 rounded-[40px] bg-gradient-to-r from-brand-500 to-brand-purple opacity-30 blur-2xl group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+              <div className="absolute -inset-1 rounded-[40px] bg-gradient-to-r from-brand-500 to-brand-purple opacity-20 blur-2xl group-hover:opacity-30 transition duration-1000" />
               
               <div className="relative bg-[#09090f] border border-white/10 rounded-[36px] p-6 shadow-2xl">
                 {/* Phone Notch */}
@@ -171,57 +239,185 @@ export default function Home() {
                 </div>
 
                 {/* Simulated Screen */}
-                <div className="mt-6 rounded-2xl bg-black border border-white/5 p-4 flex flex-col items-center">
-                  <div className="w-full flex justify-between items-center mb-6 text-xs text-zinc-400 font-mono">
-                    <span>Active BLE Beacon</span>
-                    <span className="flex items-center gap-1 text-brand-500">
-                      <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-ping" />
-                      Searching...
-                    </span>
-                  </div>
+                <div className="mt-6 rounded-2xl bg-black border border-white/5 p-4 flex flex-col items-center min-h-[360px] justify-between relative overflow-hidden">
+                  
+                  {/* IDLE STATE */}
+                  {simState === "idle" && (
+                    <div className="w-full flex-1 flex flex-col justify-between items-center py-2">
+                      <div className="w-full flex justify-between items-center text-[10px] text-zinc-400 font-mono">
+                        <span>Active BLE Radar</span>
+                        <span className="flex items-center gap-1 text-zinc-500">
+                          <span className="h-1.5 w-1.5 rounded-full bg-zinc-500 animate-ping" />
+                          Idle
+                        </span>
+                      </div>
+                      
+                      <div className="my-6 text-center">
+                        <div className="w-32 h-32 rounded-full border border-dashed border-white/10 flex items-center justify-center relative mx-auto mb-4">
+                          <div className="absolute inset-4 rounded-full border border-brand-500/10 animate-ping" />
+                          <Smartphone size={32} className="text-zinc-500" />
+                        </div>
+                        <p className="text-sm font-semibold text-white font-display">Awaiting Merchant Beacon</p>
+                        <p className="text-xs text-zinc-500 mt-1 max-w-[200px] mx-auto">Walk within 1 meter of a HoverPay register to activate.</p>
+                      </div>
 
-                  {/* Merchant card prediction */}
-                  <div className="w-full bg-[#0a0a0f] border border-brand-500/10 rounded-2xl p-4 flex items-center gap-4 mb-6 relative">
-                    <div className="absolute -top-2.5 left-4 bg-brand-500/10 text-brand-500 border border-brand-500/20 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
-                      AI Ambient Prediction
-                    </div>
-                    <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center text-xl">☕</div>
-                    <div className="text-left flex-1">
-                      <p className="font-semibold text-white text-sm">Starbucks Register 3</p>
-                      <p className="text-[10px] text-zinc-500">Predicted location • Cafe Coffee</p>
-                    </div>
-                    <div className="text-right text-[10px] text-brand-500 bg-brand-500/5 border border-brand-500/10 px-2 py-1 rounded-md">
-                      0.3m
-                    </div>
-                  </div>
-
-                  {/* Gesture Detection Circle */}
-                  <div className="w-48 h-48 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center relative mb-6">
-                    <div className="absolute inset-2 rounded-full border border-brand-500/20 radar-ring" />
-                    <div className="absolute inset-6 rounded-full bg-brand-500/5 flex flex-col items-center justify-center">
-                      <motion.div
-                        animate={{ y: [0, -10, 0] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                        className="text-brand-500"
+                      <button 
+                        onClick={triggerSimulation}
+                        className="w-full py-3 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-500 border border-brand-500/20 font-bold text-xs transition-colors"
                       >
-                        <Hand size={36} />
-                      </motion.div>
-                      <p className="text-[10px] text-zinc-400 font-mono mt-3 uppercase tracking-wider">Hover Hand</p>
+                        Simulate Ambient Pay
+                      </button>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Quick Card Pay */}
-                  <div className="w-full bg-zinc-900/50 border border-white/5 rounded-xl p-3 flex justify-between items-center text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-4 bg-brand-purple rounded" />
-                      <span className="font-medium text-white">ICICI Emerald Credit</span>
+                  {/* NEARBY DETECTED STATE */}
+                  {simState === "nearby" && (
+                    <div className="w-full flex-1 flex flex-col justify-between py-2">
+                      <div className="w-full flex justify-between items-center text-[10px] text-brand-500 font-mono">
+                        <span>Active BLE Radar</span>
+                        <span className="flex items-center gap-1 text-brand-500">
+                          <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-ping" />
+                          Resolving...
+                        </span>
+                      </div>
+
+                      <div className="my-6 bg-[#0a0a0f] border border-brand-500/20 rounded-2xl p-4 flex items-center gap-4 relative animate-pulse">
+                        <div className="absolute -top-2.5 left-4 bg-brand-500/20 text-brand-500 border border-brand-500/30 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider font-mono">
+                          AI Distance Lock
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center text-xl">☕</div>
+                        <div className="text-left flex-1">
+                          <p className="font-semibold text-white text-xs">Starbucks Register 3</p>
+                          <p className="text-[9px] text-zinc-500">Predicted • Cafe Coffee</p>
+                        </div>
+                        <div className="text-right text-[10px] text-brand-500 font-bold font-mono">
+                          0.35m
+                        </div>
+                      </div>
+
+                      <div className="text-center text-xs text-zinc-400 font-mono">
+                        Calculating risk index score...
+                      </div>
                     </div>
-                    <span className="text-zinc-400">Total: ₹340</span>
-                  </div>
+                  )}
+
+                  {/* VERIFY STATE */}
+                  {simState === "verify" && (
+                    <div className="w-full flex-1 flex flex-col justify-between py-2">
+                      <div className="w-full flex justify-between items-center text-[10px] text-brand-purple font-mono">
+                        <span>Touchless Gesture Scan</span>
+                        <span>{simProgress}% matched</span>
+                      </div>
+
+                      <div className="w-32 h-32 rounded-full border-2 border-dashed border-brand-purple/20 flex items-center justify-center relative mx-auto my-4">
+                        <div className="absolute inset-2 rounded-full border border-brand-500/20 radar-ring" />
+                        <div className="absolute inset-4 rounded-full bg-brand-purple/5 flex flex-col items-center justify-center">
+                          <motion.div
+                            animate={{ scale: [1, 1.15, 1] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                            className="text-brand-purple"
+                          >
+                            <Hand size={28} />
+                          </motion.div>
+                        </div>
+                      </div>
+
+                      <div className="w-full bg-[#0a0a0f] border border-white/5 rounded-xl p-3 flex justify-between items-center text-[10px]">
+                        <span className="text-zinc-500">Securing:</span>
+                        <span className="font-medium text-white font-mono">Enclave Session Active</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PROCESSING STATE */}
+                  {simState === "processing" && (
+                    <div className="w-full flex-1 flex flex-col justify-between items-center py-2">
+                      <div className="w-full flex justify-between items-center text-[10px] text-zinc-500 font-mono">
+                        <span>Enclave Session Vault</span>
+                        <span>Sealing...</span>
+                      </div>
+
+                      <div className="my-6 text-center">
+                        <div className="w-16 h-16 rounded-full bg-brand-purple/10 border border-brand-purple/30 flex items-center justify-center mx-auto mb-4 animate-spin text-brand-purple">
+                          <Cpu size={24} />
+                        </div>
+                        <p className="text-xs font-semibold text-white font-mono">Zero-Knowledge Key exchange</p>
+                        <p className="text-[10px] text-zinc-500 mt-1">Generating ephemeral token hash...</p>
+                      </div>
+
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-brand-purple to-brand-500 w-2/3 rounded-full animate-pulse" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUCCESS STATE */}
+                  {simState === "success" && (
+                    <div className="w-full flex-1 flex flex-col justify-center items-center py-6 text-center animate-bounce">
+                      <div className="w-16 h-16 bg-brand-500/10 border border-brand-500/30 rounded-full flex items-center justify-center mb-4 text-brand-500 shadow-[0_0_30px_rgba(0,255,170,0.2)]">
+                        <Check size={28} className="animate-pulse" />
+                      </div>
+                      <h3 className="text-lg font-bold text-white font-display">Payment Resolved</h3>
+                      <p className="text-brand-500 text-sm font-mono font-bold mt-1">₹340 Settled</p>
+                    </div>
+                  )}
+
+                  {/* DIGITAL RECEIPT STATE */}
+                  {simState === "receipt" && (
+                    <div className="w-full flex-1 flex flex-col justify-between py-2 text-left">
+                      <div className="w-full flex justify-between items-center text-[9px] text-brand-500 font-mono font-bold">
+                        <span>UPI LITE INVOICE RECEIPT</span>
+                        <span>HPX8892019</span>
+                      </div>
+
+                      <div className="w-full bg-[#030305] border border-white/5 rounded-2xl p-4 my-4 space-y-2 text-[10px] font-mono text-zinc-400">
+                        <div className="flex justify-between">
+                          <span>Merchant:</span>
+                          <span className="text-white font-bold">Starbucks Register 3</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>UPI Ref:</span>
+                          <span className="text-white">438912889120</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Verification:</span>
+                          <span className="text-brand-500 font-bold">Handpose (MediaPipe)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Latency:</span>
+                          <span className="text-white font-bold">0.72 seconds</span>
+                        </div>
+                        <div className="flex justify-between border-t border-white/5 pt-2">
+                          <span>Account:</span>
+                          <span className="text-white font-bold">ZKS Token Wallet</span>
+                        </div>
+                        <div className="flex justify-between text-brand-500 font-bold">
+                          <span>Final Amount:</span>
+                          <span>₹340.00</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={resetSimulation}
+                        className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-[10px] font-mono transition-colors text-center"
+                      >
+                        Reset Walkthrough Simulator
+                      </button>
+                    </div>
+                  )}
+
                 </div>
 
-                <div className="mt-4 text-center">
-                  <p className="text-xs text-zinc-500 font-mono">Ambient Secure Token Auth V2.1</p>
+                {/* Simulated Telemetry Log Panel */}
+                <div className="mt-4 p-3 bg-black rounded-xl border border-white/5 font-mono text-[9px] text-zinc-500 text-left h-24 overflow-y-auto space-y-0.5">
+                  <p className="text-brand-500 font-bold uppercase tracking-wider text-[8px] mb-1">Telemetry Enclave Logs</p>
+                  {simLogs.length === 0 ? (
+                    <p className="text-zinc-600 italic">No telemetry data. Click 'Simulate Ambient Pay' to run walkthrough...</p>
+                  ) : (
+                    simLogs.map((log, idx) => (
+                      <p key={idx}>&gt; {log}</p>
+                    ))
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -282,6 +478,238 @@ export default function Home() {
               title="Local Gesture Classifier"
               desc="Processes hand coordinates directly in the browser using dynamic TensorFlow models. Zero image data is ever uploaded."
             />
+          </div>
+        </div>
+      </section>
+
+      {/* Ambient Infrastructure Verticals Section */}
+      <section className="py-24 px-6 relative bg-gradient-to-b from-[#030303] to-[#050508]" id="ambient-verticals">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-500/20 bg-brand-500/5 text-xs font-semibold text-brand-500 mb-4"
+            >
+              <Sparkles size={12} />
+              <span>AMBIENT INFRASTRUCTURE LAYER</span>
+            </motion.div>
+            <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white mb-4">Zero queuing. Zero scanning.</h2>
+            <p className="text-zinc-400 text-lg">HoverPay transitions UPI from active user interactions to invisible ambient clearing.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
+            {/* Verticals Stepper Selector */}
+            <div className="space-y-3 lg:col-span-1">
+              {[
+                { id: "metro", title: "HoverPay Metro", desc: "Express gate transit clearing via wearable RSSI locks." },
+                { id: "society", title: "HoverPay Society", desc: "Walk-out clearing at local gated community stores." },
+                { id: "campus", title: "HoverPay Campus", desc: "Zero-friction cafeteria and student retail routing." },
+                { id: "retail", title: "HoverPay Retail", desc: "Seamless grab-and-go experience at corporate hubs." }
+              ].map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setActiveVertical(v.id as any)}
+                  className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex items-start gap-4 ${
+                    activeVertical === v.id 
+                      ? 'bg-brand-500/5 border-brand-500/30 text-white shadow-[0_0_20px_rgba(0,255,170,0.02)]' 
+                      : 'bg-[#09090f]/50 border-white/5 text-zinc-400 hover:bg-white/5 hover:border-white/10'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-sm ${activeVertical === v.id ? 'bg-brand-500/10 text-brand-500 border border-brand-500/20' : 'bg-white/5 text-zinc-500 border border-transparent'}`}>
+                    {v.id === "metro" && "🚇"}
+                    {v.id === "society" && "🏡"}
+                    {v.id === "campus" && "🎓"}
+                    {v.id === "retail" && "🛍️"}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm font-display">{v.title}</h4>
+                    <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{v.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Vertical Real-Time Visual Telemetry Panel */}
+            <div className="lg:col-span-2 bg-[#09090f] border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl min-h-[380px] flex flex-col justify-between">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
+              
+              {/* Header HUD */}
+              <div className="flex justify-between items-center pb-4 border-b border-white/5 text-xs font-mono text-zinc-500">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-brand-500 animate-pulse" />
+                  AMBIENT NODE IN-RANGE
+                </span>
+                <span>TELEMETRY FEED v1.9</span>
+              </div>
+
+              {/* Dynamic Visual Mock per Vertical */}
+              <div className="my-6 flex-1 flex flex-col justify-center">
+                {activeVertical === "metro" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div className="text-left space-y-4">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-brand-500/10 border border-brand-500/20 text-brand-500 font-mono text-[9px] font-bold uppercase">
+                        Active Proximity Lock
+                      </div>
+                      <h3 className="text-xl font-bold text-white font-display">Bypass Metro Turnstiles</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Pass through Delhi or Mumbai metro gates by waving your hand or ring. Telemetry maps your path, connects to the transit beacon, and clears the gate in 0.12s.
+                      </p>
+                    </div>
+                    <div className="bg-[#030305] border border-white/5 rounded-2xl p-4 font-mono text-[10px] space-y-2 text-zinc-500 text-left">
+                      <p className="text-brand-500 font-bold">&gt; RSSI Signal Lock: -56dBm (Strong)</p>
+                      <p>&gt; Merchant: DMRC Gate 4 Entry</p>
+                      <p>&gt; Wearable payload verified via Enclave</p>
+                      <p>&gt; UPI Ref: HPX77810294</p>
+                      <p className="text-white font-bold">&gt; Gate clearance: GRANTED (₹45.00 settled)</p>
+                    </div>
+                  </div>
+                )}
+
+                {activeVertical === "society" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div className="text-left space-y-4">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-brand-purple/10 border border-brand-purple/20 text-brand-purple font-mono text-[9px] font-bold uppercase">
+                        AI Autopilot Checkout
+                      </div>
+                      <h3 className="text-xl font-bold text-white font-display">Apartment Supermarket Walks</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Pick up daily items at your housing society store. Ambient sensors match your HoverID key as you walk past the checkout threshold, resolving the ledger securely.
+                      </p>
+                    </div>
+                    <div className="bg-[#030305] border border-white/5 rounded-2xl p-4 font-mono text-[10px] space-y-2 text-zinc-500 text-left">
+                      <p className="text-brand-purple font-bold">&gt; Proximity anchor connected: SOC-STORE-1</p>
+                      <p>&gt; Cart identified: 3 items (Milk, Bread, Butter)</p>
+                      <p>&gt; Identity check: Enclave Hash matched</p>
+                      <p>&gt; Network: cleared via primary UPI Lite</p>
+                      <p className="text-white font-bold">&gt; Settlement: ₹210.00 (Success)</p>
+                    </div>
+                  </div>
+                )}
+
+                {activeVertical === "campus" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div className="text-left space-y-4">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-brand-500/10 border border-brand-500/20 text-brand-500 font-mono text-[9px] font-bold uppercase">
+                        Smart Hub Integration
+                      </div>
+                      <h3 className="text-xl font-bold text-white font-display">Campus & Corporate Canteens</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Skip cafeteria queues entirely. Ambient registers calculate your food tray invoice and settle the balance through local sub-second handshakes.
+                      </p>
+                    </div>
+                    <div className="bg-[#030305] border border-white/5 rounded-2xl p-4 font-mono text-[10px] space-y-2 text-zinc-500 text-left">
+                      <p className="text-brand-500 font-bold">&gt; Beacon matched: IIT Cafeteria POS 3</p>
+                      <p>&gt; Tray image scan matched: Tray ID #4819</p>
+                      <p>&gt; Authentication: On-Device Handpose verified</p>
+                      <p>&gt; Voucher Code: Campus-Lite active</p>
+                      <p className="text-white font-bold">&gt; Settle Code: CODE-200 (₹180.00)</p>
+                    </div>
+                  </div>
+                )}
+
+                {activeVertical === "retail" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div className="text-left space-y-4">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-brand-purple/10 border border-brand-purple/20 text-brand-purple font-mono text-[9px] font-bold uppercase">
+                        Enterprise API clearing
+                      </div>
+                      <h3 className="text-xl font-bold text-white font-display">Walk-Out Retail</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Seamless grab-and-go experience. Ambient secure tunnels process checkouts as you exit multi-lane retail thresholds, with instant phone chimes confirming clearance.
+                      </p>
+                    </div>
+                    <div className="bg-[#030305] border border-white/5 rounded-2xl p-4 font-mono text-[10px] space-y-2 text-zinc-500 text-left">
+                      <p className="text-brand-purple font-bold">&gt; Connected to Gateway: RETAIL-HUB-MUM</p>
+                      <p>&gt; Threshold crossed: exit gate 2</p>
+                      <p>&gt; Token cleared: HPX-ZKS-88910</p>
+                      <p>&gt; Latency benchmark: 0.68s</p>
+                      <p className="text-white font-bold">&gt; Cleared: ₹1250.00 settled successfully</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Explainer footer */}
+              <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[10px] text-zinc-500">
+                <span>Security Vault: RBI compliance cleared</span>
+                <span>NPCI token pipeline active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Wearable Ecosystem Studio Section */}
+      <section className="py-24 px-6 border-t border-white/5 bg-[#030303]" id="wearables">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-500/20 bg-brand-500/5 text-xs font-semibold text-brand-500 mb-4"
+            >
+              <Watch size={12} />
+              <span>HARDWARE SYNC V2</span>
+            </motion.div>
+            <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white mb-4">Go completely phone-free.</h2>
+            <p className="text-zinc-400 text-lg">Provision secure cryptographic key pairs directly onto smart wearables for tap-free ambient clearances.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Ring Card */}
+            <div className="glass-card p-6 flex flex-col justify-between text-left relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500/5 rounded-full blur-xl group-hover:bg-brand-500/10 transition-colors" />
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-brand-500/5 border border-brand-500/10 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">
+                  💍
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">HoverRing</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed mb-6">
+                  Liquid-metal cyber-ring embedded with active BLE antennas and passive high-coercivity NFC microchips. Clears metro gates with a simple hand wave.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[10px] font-mono">
+                <span className="text-zinc-500">PROVISION</span>
+                <span className="text-brand-500 font-bold uppercase">Keys Synced (Active)</span>
+              </div>
+            </div>
+
+            {/* Watch Card */}
+            <div className="glass-card p-6 flex flex-col justify-between text-left relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-brand-purple/5 rounded-full blur-xl group-hover:bg-brand-purple/10 transition-colors" />
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-brand-purple/5 border border-brand-purple/10 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">
+                  ⌚
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">HoverWatch App</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed mb-6">
+                  Dynamic watchOS / WearOS extension compiling secure single-use token hashes in under 0.2s. Emits encrypted RSSI pulses to trigger merchant detection.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[10px] font-mono">
+                <span className="text-zinc-500">PROVISION</span>
+                <span className="text-brand-500 font-bold uppercase">Secured by WatchID</span>
+              </div>
+            </div>
+
+            {/* Active NFC Band Card */}
+            <div className="glass-card p-6 flex flex-col justify-between text-left relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500/5 rounded-full blur-xl group-hover:bg-brand-500/10 transition-colors" />
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-brand-500/5 border border-brand-500/10 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">
+                  ⚡
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">HoverBand (Silicon)</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed mb-6">
+                  High-durability hypoallergenic bands designed for university campuses and gated communities. Syncs with local registers for phone-free checkouts.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[10px] font-mono">
+                <span className="text-zinc-500">PROVISION</span>
+                <span className="text-zinc-500 uppercase">Ready to Pair</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -363,82 +791,115 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Developer Architecture Diagram */}
-      <section className="py-24 px-6" id="architecture">
+      {/* Trust & Security Enclave Pipeline Diagram */}
+      <section className="py-24 px-6 relative" id="architecture">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white mb-4">Technical Architecture</h2>
-            <p className="text-zinc-400 text-lg">High-security tokenization integrated with local device hardware.</p>
+          <div className="text-center max-w-2xl mx-auto mb-20">
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-purple/20 bg-brand-purple/5 text-xs font-semibold text-brand-purple mb-4"
+            >
+              <ShieldCheck size={12} />
+              <span>MILITARY-GRADE ENCLAVE ARCHITECTURE</span>
+            </motion.div>
+            <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white mb-4">Trust Engineering</h2>
+            <p className="text-zinc-400 text-lg">Every transaction is fully isolated, encrypted, and processed directly over standard NPCI/UPI networks.</p>
           </div>
 
-          <div className="bg-[#09090f] border border-white/10 rounded-3xl p-6 md:p-10 relative">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Architecture Columns */}
-              <ArchColumn title="1. Edge Environment" subtitle="Device hardware layer">
-                <ArchNode 
-                  id="handpose"
-                  title="Local Handpose Classifier" 
-                  desc="MediaPipe landmarks analyzed locally via WebGL." 
-                  activeNode={activeNode}
-                  setActiveNode={setActiveNode}
-                />
-                <ArchNode 
-                  id="ble"
-                  title="BLE Beacon Sensor" 
-                  desc="RSSI scanning triggers merchant prediction." 
-                  activeNode={activeNode}
-                  setActiveNode={setActiveNode}
-                />
-              </ArchColumn>
+          <div className="bg-[#09090f] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+            {/* Horizontal flow line with moving dot on desktop */}
+            <div className="hidden lg:block absolute top-[44%] left-12 right-12 h-[2px] bg-gradient-to-r from-brand-purple via-brand-500 to-emerald-500 opacity-20 pointer-events-none" />
 
-              <ArchColumn title="2. Token Isolation Vault" subtitle="Secure transaction compiler">
-                <ArchNode 
-                  id="vault"
-                  title="Decentralized Identity (HoverID)" 
-                  desc="Masks standard UPI details, generating single-use hash envelopes." 
-                  activeNode={activeNode}
-                  setActiveNode={setActiveNode}
-                />
-                <ArchNode 
-                  id="fraud"
-                  title="On-Device Risk Classifier" 
-                  desc="Local isolation forest evaluating transaction anomalies." 
-                  activeNode={activeNode}
-                  setActiveNode={setActiveNode}
-                />
-              </ArchColumn>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 relative z-10">
+              {[
+                { 
+                  step: 1, 
+                  title: "Gesture Layer", 
+                  sub: "Local Classifier",
+                  badge: "100% On-Device", 
+                  desc: "Analyzes hand landmark points in the browser using light TensorFlow JS models. Zero imagery leaves RAM.",
+                  icon: "👋",
+                  color: "border-brand-purple/30 text-brand-purple"
+                },
+                { 
+                  step: 2, 
+                  title: "Biometric Verification", 
+                  sub: "Secure Enclave Match",
+                  badge: "Hardware Sealed", 
+                  desc: "Validates gesture landmarks against secure enclave vaults using hardware-backed cryptographic checks.",
+                  icon: "👁️",
+                  color: "border-brand-purple/30 text-brand-purple"
+                },
+                { 
+                  step: 3, 
+                  title: "Encrypted Token", 
+                  sub: "Zero-Knowledge Hash",
+                  badge: "AES-GCM-256", 
+                  desc: "Compiles single-use, high-entropy token envelopes. Masks actual UPI IDs and PINs at the client layer.",
+                  icon: "🔒",
+                  color: "border-brand-500/30 text-brand-500"
+                },
+                { 
+                  step: 4, 
+                  title: "UPI Lite Infrastructure", 
+                  sub: "Sub-Second Router",
+                  badge: "Pre-loaded Enclave", 
+                  desc: "Bypasses slow gateway roundtrips by routing tokens through localized secure cache vouchers.",
+                  icon: "⚡",
+                  color: "border-emerald-500/30 text-emerald-500"
+                },
+                { 
+                  step: 5, 
+                  title: "NPCI Settlement", 
+                  sub: "Standardized Cleared",
+                  badge: "RBI Compliant", 
+                  desc: "Final clearance occurs directly on standard IMPS/UPI books, ensuring immediate money settlement.",
+                  icon: "🏦",
+                  color: "border-emerald-500/30 text-emerald-500"
+                }
+              ].map((node, idx) => (
+                <div 
+                  key={node.step}
+                  onClick={() => setActivePipeStep(idx)}
+                  className={`p-5 rounded-2xl border text-left cursor-pointer transition-all duration-300 relative flex flex-col justify-between min-h-[220px] ${
+                    activePipeStep === idx 
+                      ? 'bg-gradient-to-b from-[#0a0a14] to-black border-brand-500 shadow-[0_0_20px_rgba(0,255,170,0.06)]' 
+                      : 'bg-[#030305]/60 border-white/5 hover:border-white/10 hover:bg-[#06060c]'
+                  }`}
+                >
+                  <div className="absolute top-3 right-3 text-xs font-mono text-zinc-600 font-bold">0{node.step}</div>
+                  
+                  <div>
+                    <div className="text-xl mb-4">{node.icon}</div>
+                    <h4 className="font-bold text-white text-sm font-display tracking-tight leading-tight">{node.title}</h4>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{node.sub}</p>
+                  </div>
 
-              <ArchColumn title="3. UPI / Ledger settlement" subtitle="Standardized banking backend">
-                <ArchNode 
-                  id="gateway"
-                  title="HoverPay Router Gateway" 
-                  desc="Maps secure tokens into valid UPI Intent protocols." 
-                  activeNode={activeNode}
-                  setActiveNode={setActiveNode}
-                />
-                <ArchNode 
-                  id="ledger"
-                  title="NPCI / Bank Settlement" 
-                  desc="Final clearance over traditional banking systems." 
-                  activeNode={activeNode}
-                  setActiveNode={setActiveNode}
-                />
-              </ArchColumn>
+                  <div className="mt-6 space-y-2">
+                    <span className="inline-block text-[8px] font-bold font-mono px-2 py-0.5 rounded bg-white/5 text-zinc-400 border border-white/5 uppercase">
+                      {node.badge}
+                    </span>
+                    <p className="text-[10px] text-zinc-400 leading-relaxed line-clamp-3 md:line-clamp-none">
+                      {node.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* Interactive Info Board */}
-            <div className="mt-8 pt-6 border-t border-white/5 flex items-start gap-3 bg-[#030305] p-4 rounded-2xl border border-white/5">
+            {/* Interactive Terminal explainer board */}
+            <div className="mt-8 pt-6 border-t border-white/5 flex items-start gap-4 bg-[#030305] p-5 rounded-2xl border border-white/5 text-left">
               <Terminal className="text-brand-500 shrink-0 mt-1" size={18} />
-              <div className="text-left">
-                <p className="text-xs font-mono text-brand-500 font-bold uppercase tracking-wider">SYSTEM DIAGRAM EXPLAINER</p>
-                <p className="text-sm text-zinc-300 mt-1">
-                  {activeNode === "handpose" && "Handpose coordinates are evaluated directly on the device using Tensorflow JS. Images are read as local tensor objects and dropped immediately from RAM."}
-                  {activeNode === "ble" && "Bluetooth signals estimate distance from active terminal nodes using RSSI data. When distance drops below the set threshold, transaction flow initializes."}
-                  {activeNode === "vault" && "HoverID is a secure key-vault that generates cryptographic transaction envelopes. It guarantees zero leakage of banking tokens."}
-                  {activeNode === "fraud" && "AI Fraud check runs in 0.05s, comparing history to detect anomalies before launching network calls."}
-                  {activeNode === "gateway" && "The secure gateway handshakes directly with banking nodes, routing transactions into standard UPI Intents."}
-                  {activeNode === "ledger" && "NPCI handles the underlying money movement via IMPS/UPI Lite protocols, registering settlement on standard bank books."}
-                  {!activeNode && "Hover over any node of the architecture flow above to explore technical specifics, security credentials, and processing details."}
+              <div className="space-y-1">
+                <p className="text-xs font-mono text-brand-500 font-bold uppercase tracking-wider">SECURE PIPELINE CLEARANCE LOGS</p>
+                <p className="text-xs text-zinc-300 font-mono leading-relaxed mt-1">
+                  {activePipeStep === 0 && "LOG: [Gesture Layer] Hand pose points read locally inside canvas context. Coords normalized against standard hand shapes in 0.04s. Zero imagery stored or transmitted."}
+                  {activePipeStep === 1 && "LOG: [Biometric verification] Checking device key integrity with Enclave secure key store. Signature verification complete. Session ID validated."}
+                  {activePipeStep === 2 && "LOG: [Encrypted Token] ZKS key generation initialized. Ephemeral hash envelop generated: AES-GCM-256 encrypted. Original account identifiers completely isolated."}
+                  {activePipeStep === 3 && "LOG: [UPI Lite Gateway] Routing payload through local secure cache ledger. Preloaded token pools bypass third-party server bottlenecks, reducing API latency to <0.3s."}
+                  {activePipeStep === 4 && "LOG: [NPCI Bank Settlement] Payload authorized. Cleared directly over national banking gateways. Transaction successfully settled in real-time."}
+                  {activePipeStep === null && "Hover or click on any node of the 5-stage secure architecture pipeline above to stream live cryptographic diagnostic logs."}
                 </p>
               </div>
             </div>
@@ -544,20 +1005,95 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Developer Call to Action */}
-      <section className="py-24 px-6 relative bg-gradient-to-b from-transparent to-brand-purple/10 border-t border-white/5">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="font-display text-4xl sm:text-6xl font-extrabold text-white mb-6">Redesigning payments. Join the protocol.</h2>
-          <p className="text-zinc-400 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-            HoverPay is fully open for developers. Get access to our secure gesture SDK and local classifier libraries to integrate touchless payments today.
-          </p>
+      {/* Developer Call to Action & SDK Sandbox */}
+      <section className="py-24 px-6 relative bg-gradient-to-b from-[#030303] to-brand-purple/10 border-t border-white/5" id="developers">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-500/20 bg-brand-500/5 text-xs font-semibold text-brand-500 mb-4"
+            >
+              <Terminal size={12} />
+              <span>DEVELOPER PROTOCOL CORE</span>
+            </motion.div>
+            <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white mb-4">Build on the ambient layer.</h2>
+            <p className="text-zinc-400 text-lg">Integrate our secure handpose classifier libraries and localized BLE handshake SDK in under 5 lines of code.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch mb-12">
+            {/* Tabbed Code Snippet Column */}
+            <div className="bg-[#09090f] border border-white/10 rounded-3xl p-6 text-left flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center pb-4 border-b border-white/5 mb-6 text-xs text-zinc-500 font-mono">
+                  <span>SDK INITIALIZATION SNIPPETS</span>
+                  <span>v2.1.0-beta</span>
+                </div>
+                
+                <div className="bg-[#030305] border border-white/5 rounded-2xl p-5 font-mono text-xs text-zinc-400 overflow-x-auto min-h-[180px]">
+                  <p className="text-zinc-600 font-semibold mb-2">// 1. Import secure ambient payment client</p>
+                  <p className="text-brand-purple font-semibold">import <span className="text-white">HoverPayEnclave</span> from <span className="text-brand-500">'@hoverpay/sdk'</span>;</p>
+                  <br />
+                  <p className="text-zinc-600 font-semibold mb-2">// 2. Initiate sub-second ZKS session</p>
+                  <p className="text-brand-purple font-semibold">const <span className="text-white">session</span> = <span className="text-brand-500">await</span> HoverPayEnclave.<span className="text-white">initiate</span>({'{'}</p>
+                  <p className="pl-4">merchantId: <span className="text-brand-500">"STB-8890"</span>,</p>
+                  <p className="pl-4">amount: <span className="text-white">340.00</span>,</p>
+                  <p className="pl-4">currency: <span className="text-brand-500">"INR"</span></p>
+                  <p className="text-brand-purple font-semibold">{'}'});</p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                <span>Supports: Node, iOS, Android, WearOS</span>
+                <span className="text-brand-500">Get API Keys ➔</span>
+              </div>
+            </div>
+
+            {/* Simulated Live Sandbox REST client */}
+            <div className="bg-[#09090f] border border-white/10 rounded-3xl p-6 text-left flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center pb-4 border-b border-white/5 mb-6 text-xs text-zinc-500 font-mono">
+                  <span>LIVE CRYPTO SANDBOX RUNNER</span>
+                  <span className="text-brand-500 font-bold">API STATUS: ONLINE</span>
+                </div>
+
+                <div className="bg-[#030305] border border-white/5 rounded-2xl p-5 font-mono text-[10px] text-zinc-400 space-y-4">
+                  <div>
+                    <span className="text-brand-500 font-bold">POST</span> <span className="text-white">https://api.hoverpay.io/v1/settlements</span>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <p className="text-zinc-600 font-bold">// Headers</p>
+                    <p>Authorization: Bearer hpx_live_88920a</p>
+                    <p>Content-Type: application/json</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-zinc-600 font-bold">// Response Body (CODE 200)</p>
+                    <p className="text-emerald-400 font-bold">{'{'}</p>
+                    <p className="pl-4">"status": <span className="text-white">"settled"</span>,</p>
+                    <p className="pl-4">"txnRef": <span className="text-white">"438912889120"</span>,</p>
+                    <p className="pl-4">"latencyMs": <span className="text-white">72</span>,</p>
+                    <p className="pl-4">"enclaveVerify": <span className="text-brand-500 font-bold">true</span></p>
+                    <p className="text-emerald-400 font-bold">{'}'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                <span>Clears over standard UPI Lite intent wrappers</span>
+                <span className="text-brand-purple">View Docs ➔</span>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-center gap-4">
             <Link href="/pay" className="px-8 py-4 bg-brand-500 text-black font-bold rounded-xl hover:bg-brand-600 transition-all flex items-center gap-2">
               Launch Live App <Sparkles size={16} />
             </Link>
-            <Link href="/dashboard" className="px-8 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/10 transition-all">
-              Developer Docs
-            </Link>
+            <a href="#architecture" className="px-8 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/10 transition-all text-center">
+              Explore Enclave Specs
+            </a>
           </div>
         </div>
       </section>
