@@ -1,123 +1,336 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Store, QrCode, Smartphone, Users } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import { 
+  ArrowLeft, ArrowUpRight, ArrowDownRight, Store, QrCode, Smartphone, 
+  Users, Volume2, VolumeX, ShieldCheck, Activity, Brain, ShoppingBag, 
+  Plus, Check, Sparkles
+} from "lucide-react";
 import Link from "next/link";
+import QRCode from "react-qr-code";
+
+interface FeedItem {
+  id: number;
+  amount: number;
+  time: string;
+  method: string;
+  user: string;
+  status: "Success" | "Failed";
+  type: string;
+}
 
 export default function MerchantDashboard() {
+  const [feed, setFeed] = useState<FeedItem[]>([
+    { id: 1, amount: 340, time: "Just now", method: "HoverPay Gesture", user: "Alex Sharma", status: "Success", type: "HoverPay" },
+    { id: 2, amount: 850, time: "3 mins ago", method: "Standard UPI QR", user: "Priya Malik", status: "Success", type: "Standard" },
+    { id: 3, amount: 120, time: "8 mins ago", method: "HoverPay Watch Tap", user: "Rahul K.", status: "Success", type: "HoverPay" },
+    { id: 4, amount: 4890, time: "12 mins ago", method: "HoverPay Ring Tap", user: "Karan Johar", status: "Success", type: "HoverPay" },
+    { id: 5, amount: 450, time: "18 mins ago", method: "Standard UPI QR", user: "Neha Deshmukh", status: "Success", type: "Standard" }
+  ]);
+
+  const [voiceSynthesized, setVoiceSynthesized] = useState(true);
+  const [revenue, setRevenue] = useState(14500);
+  const [txnCount, setTxnCount] = useState(142);
+  const [hoverPayShare, setHoverPayShare] = useState(62);
+  
+  // QR generator states
+  const [qrAmount, setQrAmount] = useState("340");
+  const [qrActive, setQrActive] = useState(true);
+  const [predictedItem, setPredictedItem] = useState("Grande Pumpkin Spice Latte + Croissant");
+
+  // Web Speech Synthesis Announcer
+  const announcePayment = (amount: number, user: string) => {
+    if (!voiceSynthesized || typeof window === "undefined" || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel(); // stop current speech
+      const utterance = new SpeechSynthesisUtterance(`HoverPay of ${amount} rupees received from ${user}.`);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.log("Speech synthesis failed or blocked by autoplay constraints");
+    }
+  };
+
+  // Simulating real-time incoming transactions
+  useEffect(() => {
+    const names = ["Aarav S.", "Rohan M.", "Sneha P.", "Vikram G.", "Tanvi K.", "Divya B.", "Kabir T."];
+    const methods = [
+      { name: "HoverPay Gesture", type: "HoverPay" },
+      { name: "HoverPay Ring Tap", type: "HoverPay" },
+      { name: "HoverPay Watch Tap", type: "HoverPay" },
+      { name: "Standard UPI QR", type: "Standard" }
+    ];
+    const itemPredictions = [
+      { item: "Iced Caramel Macchiato + Espresso Shot", amt: "420" },
+      { item: "Cappuccino Single + Blueberry Muffin", amt: "310" },
+      { item: "Filter Coffee + Paneer Tikka Wrap", amt: "280" },
+      { item: "Cold Brew Double + Chocolate Cookie", amt: "350" }
+    ];
+
+    const interval = setInterval(() => {
+      const isSuccess = Math.random() > 0.08;
+      const amt = Math.floor(Math.random() * 800) + 120;
+      const randomName = names[Math.floor(Math.random() * names.length)];
+      const randomMethod = methods[Math.floor(Math.random() * methods.length)];
+
+      if (isSuccess) {
+        setRevenue(prev => prev + amt);
+        setTxnCount(prev => prev + 1);
+        if (randomMethod.type === "HoverPay") {
+          setHoverPayShare(prev => Math.min(95, parseFloat((prev + 0.3).toFixed(1))));
+        } else {
+          setHoverPayShare(prev => Math.max(40, parseFloat((prev - 0.2).toFixed(1))));
+        }
+
+        // Add to activity feed
+        const newTxn: FeedItem = {
+          id: Date.now(),
+          amount: amt,
+          time: "Just now",
+          method: randomMethod.name,
+          user: randomName,
+          status: "Success",
+          type: randomMethod.type
+        };
+
+        setFeed(prev => [newTxn, ...prev.slice(0, 5)]);
+
+        // Announce voice synthesis
+        announcePayment(amt, randomName);
+
+        // Periodically update AI terminal predicted register checkout QR amount
+        if (Math.random() > 0.6) {
+          const predict = itemPredictions[Math.floor(Math.random() * itemPredictions.length)];
+          setPredictedItem(predict.item);
+          setQrAmount(predict.amt);
+        }
+      }
+    }, 9000); // Trigger transaction flow every 9 seconds
+
+    return () => clearInterval(interval);
+  }, [voiceSynthesized]);
+
   return (
-    <div className="min-h-screen bg-[#09090b]">
-      <nav className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-[#030303] text-zinc-100 flex flex-col font-sans selection:bg-brand-500/30">
+      
+      {/* Navigation header */}
+      <nav className="border-b border-white/5 bg-[#050508]/80 backdrop-blur-xl px-6 py-4 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-zinc-500 hover:text-zinc-300">
-            <ArrowLeft size={20} />
+          <Link href="/dashboard" className="text-zinc-500 hover:text-zinc-300 w-9 h-9 border border-white/5 rounded-xl bg-white/5 flex items-center justify-center transition-colors">
+            <ArrowLeft size={16} />
           </Link>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-zinc-800 rounded flex items-center justify-center text-zinc-300">
-              <Store size={16} />
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-brand-purple/20 border border-brand-purple/30 rounded-xl flex items-center justify-center text-brand-purple font-bold">
+              <Store size={18} />
             </div>
-            <span className="font-semibold text-zinc-100">Starbucks Terminal</span>
+            <div className="text-left">
+              <span className="font-semibold text-white text-sm">Starbucks Terminal #4</span>
+              <p className="text-[10px] text-zinc-500 font-mono">Status: Connected to UPI Network</p>
+            </div>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-zinc-100 text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
-          <QrCode size={16} /> Show Store QR
-        </button>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setVoiceSynthesized(!voiceSynthesized)}
+            className={`flex items-center gap-2 border px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
+              voiceSynthesized 
+                ? 'bg-brand-500/10 border-brand-500/20 text-brand-500 font-bold' 
+                : 'bg-white/5 border-white/5 text-zinc-500'
+            }`}
+          >
+            {voiceSynthesized ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            <span>Voice Audio Alerts</span>
+          </button>
+
+          <button className="flex items-center gap-2 bg-brand-500 text-black px-4 py-2 rounded-xl text-xs font-bold hover:bg-brand-600 transition-colors">
+            <QrCode size={14} /> POS Handshake
+          </button>
+        </div>
       </nav>
 
-      <main className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-zinc-100">Today's Sales</h1>
-          <p className="text-zinc-400 text-sm">Real-time metrics for your store.</p>
-        </div>
+      {/* Main Terminal Area */}
+      <main className="container mx-auto px-6 py-10 flex-1 flex flex-col lg:flex-row gap-8 relative z-10">
+        
+        {/* Decorative ambient blur */}
+        <div className="absolute bottom-0 left-0 w-[40%] h-[30%] bg-brand-500/3 blur-[120px] pointer-events-none" />
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <StatCard title="Total Revenue" value="₹14,500" trend="+12%" up />
-          <StatCard title="Transactions" value="142" trend="+5%" up />
-          <StatCard title="Gesture Verified" value="89" subtitle="62% of total" />
-          <StatCard title="Failed/Cancelled" value="3" trend="-2%" />
-        </div>
+        {/* Left Side: Stats and Activity Ledger */}
+        <div className="flex-1 space-y-8 text-left">
+          
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white font-display">Sales Terminal Metrics</h1>
+            <p className="text-xs text-zinc-500 mt-1">Real-time point of sale telemetry details.</p>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <h3 className="text-base font-semibold text-zinc-100 mb-6">Live Activity Feed</h3>
-            <div className="space-y-4">
-              <FeedItem amount="₹340" time="Just now" method="HoverPay Gesture" user="Alex S." status="Success" />
-              <FeedItem amount="₹850" time="2 min ago" method="Standard UPI" user="Priya M." status="Success" />
-              <FeedItem amount="₹120" time="5 min ago" method="HoverPay Gesture" user="Rahul K." status="Success" />
-              <FeedItem amount="₹450" time="12 min ago" method="HoverPay Gesture" user="Neha D." status="Failed" />
-              <FeedItem amount="₹210" time="15 min ago" method="Standard UPI" user="Amit V." status="Success" />
+          {/* Stats row */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            <StatBox title="Today's Sales" value={`₹${revenue.toLocaleString('en-IN')}`} trend="+14.2%" up />
+            <StatBox title="Clearance count" value={txnCount.toString()} trend="+8.4%" up />
+            <StatBox title="Dispute Rate" value="0.00%" label="Guaranteed secure" />
+            <StatBox title="Average speed" value="0.8s" label="UPI Lite route active" />
+          </div>
+
+          {/* Incoming activity ledger feed */}
+          <div className="bg-[#09090f] border border-white/5 rounded-3xl p-6 relative overflow-hidden">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Activity className="text-brand-500 animate-pulse" size={16} /> Live Transaction Feed
+              </h3>
+              <span className="text-[10px] text-zinc-500 font-mono">Listening for BLE gesture triggers...</span>
+            </div>
+
+            <div className="space-y-3">
+              <AnimatePresence>
+                {feed.map((item) => (
+                  <motion.div 
+                    key={item.id}
+                    layoutId={`merchant-feed-${item.id}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="p-3.5 bg-black border border-white/5 rounded-2xl flex justify-between items-center hover:border-brand-500/20 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#0a0a0f] flex items-center justify-center border border-white/5 text-lg">
+                        {item.type === "HoverPay" ? "⚡" : "📱"}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-white group-hover:text-brand-500 transition-colors">{item.user}</p>
+                        <p className="text-[9px] text-zinc-500 font-mono mt-0.5">{item.method} • {item.time}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-white">₹{item.amount}</p>
+                      <span className="text-[8px] font-bold text-brand-500 font-mono bg-brand-500/5 px-2 py-0.5 rounded border border-brand-500/10 mt-1 inline-block uppercase">
+                        Settle Complete
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <h3 className="text-base font-semibold text-zinc-100 mb-6">Payment Methods</h3>
-            <div className="space-y-6">
+        </div>
+
+        {/* Right Side: Live QR Code & AI Prediction Board */}
+        <div className="w-full lg:w-96 space-y-6 text-left">
+          
+          {/* AI predicted purchase QR generator */}
+          <div className="bg-[#09090f] border border-white/5 rounded-3xl p-6 flex flex-col justify-between items-center text-center relative scanline">
+            <div className="w-full flex justify-between items-center text-[9px] font-mono text-zinc-500 mb-6">
+              <span className="flex items-center gap-1 text-brand-purple">
+                <Brain size={12} /> AI Register Prediction
+              </span>
+              <span>Pos terminal v4.1</span>
+            </div>
+
+            {/* AI suggestion panel */}
+            <div className="w-full bg-brand-purple/5 border border-brand-purple/20 rounded-2xl p-3 mb-6 flex items-start gap-3 text-left">
+              <ShoppingBag size={18} className="text-brand-purple shrink-0 mt-0.5" />
               <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-zinc-400">HoverPay (Gesture)</span>
-                  <span className="text-zinc-100 font-medium">62%</span>
+                <p className="text-[9px] font-bold font-mono text-brand-purple uppercase">Predicted Register Queue Item</p>
+                <p className="text-xs text-white mt-0.5 leading-snug font-semibold">{predictedItem}</p>
+              </div>
+            </div>
+
+            {/* Dynamic QR Output */}
+            {qrActive && (
+              <div className="p-4 bg-white rounded-2xl inline-block mb-6 shadow-2xl relative border border-brand-500/20">
+                <QRCode 
+                  value={`upi://pay?pa=starbucks@okicici&pn=Starbucks&am=${qrAmount}&cu=INR`} 
+                  size={160} 
+                  fgColor="#030303"
+                />
+              </div>
+            )}
+
+            <div className="w-full mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-zinc-400 font-medium">Terminal Bill Amount</span>
+                <span className="text-xs text-brand-500 font-mono">UPI Intent Prefilled</span>
+              </div>
+              <div className="flex items-center gap-2 justify-center bg-black border border-white/5 rounded-xl px-4 py-2.5">
+                <span className="text-sm font-semibold text-zinc-500">₹</span>
+                <input 
+                  type="number" 
+                  value={qrAmount}
+                  onChange={(e) => setQrAmount(e.target.value)}
+                  className="bg-transparent text-xl font-extrabold text-white w-full outline-none font-mono text-center focus:border-transparent" 
+                />
+              </div>
+            </div>
+
+            <p className="text-[10px] text-zinc-500 font-mono max-w-[220px]">
+              BLE Beacons emit this checkout configuration ambiently to devices inside 1.5 meters.
+            </p>
+          </div>
+
+          {/* Payment method split analytics */}
+          <div className="bg-[#09090f] border border-white/5 rounded-3xl p-6">
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-6">Split Volume Share</h3>
+            
+            <div className="space-y-5">
+              <div>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-zinc-400 font-medium">HoverPay (Touchless Beacons)</span>
+                  <span className="text-brand-500 font-bold font-mono">{hoverPayShare}%</span>
                 </div>
-                <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[62%]" />
+                <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${hoverPayShare}%` }}
+                    className="h-full bg-brand-500 rounded-full" 
+                  />
                 </div>
               </div>
+
               <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-zinc-400">Standard QR Scan</span>
-                  <span className="text-zinc-100 font-medium">38%</span>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-zinc-400 font-medium">Standard QR scans</span>
+                  <span className="text-zinc-500 font-bold font-mono">{(100 - hoverPayShare).toFixed(1)}%</span>
                 </div>
-                <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 w-[38%]" />
+                <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${100 - hoverPayShare}%` }}
+                    className="h-full bg-brand-purple rounded-full" 
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="mt-8 p-4 bg-zinc-950 border border-zinc-800 rounded-xl flex gap-3">
-              <Smartphone className="text-emerald-500 shrink-0" size={20} />
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                HoverPay transactions have a <strong className="text-zinc-200">0% dispute rate</strong> today due to on-device physical confirmation.
+            <div className="mt-8 p-3.5 bg-brand-500/5 border border-brand-500/10 rounded-2xl flex gap-2.5 items-start">
+              <ShieldCheck className="text-brand-500 shrink-0 mt-0.5" size={16} />
+              <p className="text-[10px] text-zinc-400 leading-normal">
+                Ambient physical confirmations have eliminated checkout double-scans and cash register mismatch incidents.
               </p>
             </div>
           </div>
+
         </div>
+
       </main>
     </div>
   );
 }
 
-function StatCard({ title, value, trend, subtitle, up }: any) {
+function StatBox({ title, value, trend, label, up }: any) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      <p className="text-sm font-medium text-zinc-400 mb-2">{title}</p>
-      <h3 className="text-3xl font-bold text-zinc-100 mb-2">{value}</h3>
-      {trend && (
-        <div className={`inline-flex items-center gap-1 text-xs font-medium ${up ? 'text-emerald-500' : 'text-zinc-500'}`}>
-          {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {trend} from yesterday
-        </div>
-      )}
-      {subtitle && <p className="text-xs text-zinc-500">{subtitle}</p>}
-    </div>
-  )
-}
-
-function FeedItem({ amount, time, method, user, status }: any) {
-  const isSuccess = status === "Success";
-  return (
-    <div className="flex items-center justify-between p-3 hover:bg-zinc-800/50 rounded-xl transition-colors border border-transparent hover:border-zinc-800">
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isSuccess ? 'bg-zinc-950 border border-zinc-800' : 'bg-red-500/10 border border-red-500/20'}`}>
-          {isSuccess ? <Users size={16} className="text-zinc-400" /> : <span className="text-red-400 text-xs font-bold">!</span>}
-        </div>
-        <div>
-          <p className="text-sm font-medium text-zinc-200">{user}</p>
-          <p className="text-xs text-zinc-500">{method}</p>
-        </div>
-      </div>
-      <div className="text-right">
-        <p className={`text-sm font-semibold ${isSuccess ? 'text-zinc-100' : 'text-red-400 line-through opacity-70'}`}>{amount}</p>
-        <p className="text-xs text-zinc-500">{time}</p>
+    <div className="bg-[#09090f] border border-white/5 rounded-3xl p-5 flex flex-col justify-between text-left">
+      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">{title}</p>
+      <div>
+        <h3 className="text-xl font-extrabold text-white font-display">{value}</h3>
+        {trend && (
+          <div className={`inline-flex items-center gap-0.5 text-[9px] font-bold mt-1.5 ${up ? 'text-brand-500' : 'text-zinc-500'}`}>
+            {up ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+            {trend} from yesterday
+          </div>
+        )}
+        {label && <p className="text-[9px] text-zinc-500 mt-1.5 font-mono">{label}</p>}
       </div>
     </div>
-  )
+  );
 }

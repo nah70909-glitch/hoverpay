@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "HoverPay | Modern UPI Experience",
-  description: "Gesture-assisted payment verification for the Indian ecosystem.",
+  title: "HoverPay | Futuristic Touchless UPI Platform",
+  description: "Next-generation touchless payments using gesture verification, AI merchant prediction, and secure ambient authentication.",
 };
 
 export default function RootLayout({
@@ -15,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans min-h-screen bg-[#09090b] text-zinc-50 overflow-x-hidden`}>
+    <html lang="en" className="dark scroll-smooth">
+      <body className={`${inter.variable} ${outfit.variable} font-sans min-h-screen bg-[#030303] text-zinc-50 overflow-x-hidden antialiased`}>
         {children}
       </body>
     </html>
