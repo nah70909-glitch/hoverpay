@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { 
   Hand, Smartphone, ShieldCheck, ArrowRight, Zap, Cpu, Sparkles, 
   Layers, Lock, Eye, Wifi, RefreshCw, BarChart3, Radio, ArrowUpRight, 
-  Users, CheckCircle2, ChevronRight, Activity, Terminal
+  Users, CheckCircle2, ChevronRight, Activity, Terminal, Check, Watch
 } from "lucide-react";
 
 export default function Home() {
