@@ -21,11 +21,11 @@ export default function Home() {
   const triggerSimulation = () => {
     if (simState !== "idle") return;
     setSimState("nearby");
-    setSimLogs(["Scanning BLE spectra...", "Detected 2.4GHz beacon from Starbucks ID: STB-8890", "Distance calculated: 0.35m"]);
+    setSimLogs(["Scanning BLE spectra...", "Detected 2.4GHz beacon from Starbucks ID: STB-8890", "Distance calculated: 0.35m", "Edge AI resolver locking coordinates..."]);
     
     setTimeout(() => {
       setSimState("verify");
-      setSimLogs(prev => [...prev, "Proximity threshold cleared. Starting Enclave Session...", "Awaiting touchless gesture confirmation...", "Processing hand landmarks..."]);
+      setSimLogs(prev => [...prev, "Proximity threshold cleared. Initializing secure camera stream...", "Running Face-Signature liveness scan...", "Checking blink liveness: OK", "Anti-spoof protection: SECURE", "Face Match: Welcome back, Prathik (99.85%)", "Awaiting gesture wave confirmation intent..."]);
       
       let p = 0;
       const interval = setInterval(() => {
@@ -34,11 +34,11 @@ export default function Home() {
         if (p >= 100) {
           clearInterval(interval);
           setSimState("processing");
-          setSimLogs(prev => [...prev, "Gesture confirmed (100% match)", "Compiling cryptographic token hash...", "Routing to UPI Lite network gateway..."]);
+          setSimLogs(prev => [...prev, "Gesture confirmed (100% intent lock)", "Generating ephemeral zero-knowledge token hash...", "Forwarding payload to UPI Lite Gateway..."]);
           
           setTimeout(() => {
             setSimState("success");
-            setSimLogs(prev => [...prev, "Gateway response: CODE-200 (Success)", "UPI Ref: 438912889120", "Ledger settled in 0.72s"]);
+            setSimLogs(prev => [...prev, "UPI Lite Gateway cleared: CODE-200", "UPI Ref: 8473920192", "Transaction completed in 0.72 seconds!"]);
             
             // play double high-fidelity chime
             try {
@@ -66,7 +66,7 @@ export default function Home() {
             }, 2000);
           }, 1500);
         }
-      }, 100);
+      }, 120);
     }, 2000);
   };
 
@@ -303,28 +303,65 @@ export default function Home() {
 
                   {/* VERIFY STATE */}
                   {simState === "verify" && (
-                    <div className="w-full flex-1 flex flex-col justify-between py-2">
-                      <div className="w-full flex justify-between items-center text-[10px] text-brand-purple font-mono">
-                        <span>Touchless Gesture Scan</span>
-                        <span>{simProgress}% matched</span>
+                    <div className="w-full flex-1 flex flex-col justify-between py-2 text-left">
+                      <div className="w-full flex justify-between items-center text-[9px] text-brand-500 font-mono">
+                        <span>AMBIENT LIVENESS IDENTITY</span>
+                        <span className="animate-pulse">Active Scan</span>
                       </div>
 
-                      <div className="w-32 h-32 rounded-full border-2 border-dashed border-brand-purple/20 flex items-center justify-center relative mx-auto my-4">
-                        <div className="absolute inset-2 rounded-full border border-brand-500/20 radar-ring" />
-                        <div className="absolute inset-4 rounded-full bg-brand-purple/5 flex flex-col items-center justify-center">
-                          <motion.div
-                            animate={{ scale: [1, 1.15, 1] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                            className="text-brand-purple"
+                      {/* Video-style Neural Scanning Viewport */}
+                      <div className="my-3 relative w-full h-36 bg-zinc-950 border border-white/10 rounded-xl overflow-hidden flex flex-col items-center justify-center">
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,170,0.05),transparent)] pointer-events-none" />
+                        
+                        {/* Laser Scanline */}
+                        <motion.div 
+                          animate={{ y: [-72, 72, -72] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                          className="absolute w-full h-0.5 bg-brand-500 shadow-[0_0_10px_rgba(0,255,170,0.5)] z-20"
+                        />
+
+                        {/* Scanner Hud Details */}
+                        {simProgress < 50 ? (
+                          <div className="text-center z-10 space-y-1">
+                            <Eye className="text-brand-500/40 mx-auto animate-pulse" size={28} />
+                            <p className="text-[10px] font-mono text-zinc-400">Scanning Face Signature...</p>
+                            <p className="text-[8px] font-mono text-zinc-500 font-semibold uppercase tracking-wider">Liveness Check...</p>
+                          </div>
+                        ) : (
+                          <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="text-center z-10 space-y-1"
                           >
-                            <Hand size={28} />
+                            <div className="w-8 h-8 rounded-full bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mx-auto text-brand-500 text-xs font-bold animate-pulse">
+                              ✓
+                            </div>
+                            <p className="text-[11px] font-bold text-white font-display tracking-tight uppercase">WELCOME BACK, PRATHIK</p>
+                            <p className="text-[9px] font-mono text-brand-500 font-bold bg-brand-500/5 px-2 py-0.5 rounded border border-brand-500/10 inline-block">
+                              Confidence: 99.85% (Secure)
+                            </p>
                           </motion.div>
+                        )}
+
+                        {/* Floating neural dots overlay */}
+                        <div className="absolute bottom-2 left-2 right-2 flex justify-between text-[7px] font-mono text-zinc-500">
+                          <span>ANTI-SPOOF: LOCKED</span>
+                          <span>EYE-BLINK: MATCHED</span>
                         </div>
                       </div>
 
-                      <div className="w-full bg-[#0a0a0f] border border-white/5 rounded-xl p-3 flex justify-between items-center text-[10px]">
-                        <span className="text-zinc-500">Securing:</span>
-                        <span className="font-medium text-white font-mono">Enclave Session Active</span>
+                      {/* Gesture intent progress bar */}
+                      <div className="w-full space-y-1.5">
+                        <div className="flex justify-between text-[9px] font-mono text-zinc-500">
+                          <span>Confirm Gesture Wave (Gesture intent)</span>
+                          <span className="text-brand-500">{simProgress}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-brand-500 transition-all duration-100" 
+                            style={{ width: `${simProgress}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -377,11 +414,11 @@ export default function Home() {
                         </div>
                         <div className="flex justify-between">
                           <span>UPI Ref:</span>
-                          <span className="text-white">438912889120</span>
+                          <span className="text-white font-bold">8473920192</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Verification:</span>
-                          <span className="text-brand-500 font-bold">Handpose (MediaPipe)</span>
+                          <span>Auth Identity:</span>
+                          <span className="text-brand-500 font-bold">Prathik (Verified Face)</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Latency:</span>
