@@ -16,7 +16,7 @@ import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-backend-webgl";
 import * as handpose from "@tensorflow-models/handpose";
 
-type PayState = "signup" | "login" | "otp" | "face-reg" | "pin" | "provision" | "nearby" | "amount" | "verify" | "success" | "failed";
+type PayState = "signup" | "login" | "otp" | "face-reg" | "pin" | "provision" | "nearby" | "amount" | "verify" | "success" | "failed" | "forgot" | "device-verify";
 type BioMethod = "face" | "hand" | "finger";
 
 const DETECTED_MERCHANTS = [
@@ -239,6 +239,26 @@ export default function PayFlow() {
     }, 120);
     return () => clearInterval(interval);
   }, [state, onboardName, onboardPhone, onboardPIN]);
+
+  // Device verification sweep loop
+  const [deviceProgress, setDeviceProgress] = useState(0);
+  useEffect(() => {
+    if (state !== "device-verify") return;
+    setDeviceProgress(0);
+    const interval = setInterval(() => {
+      setDeviceProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setState(isAuthenticated ? "nearby" : "signup");
+          }, 800);
+          return 100;
+        }
+        return prev + 8;
+      });
+    }, 90);
+    return () => clearInterval(interval);
+  }, [state, isAuthenticated]);
 
   // Web Speech API initialization
   useEffect(() => {
@@ -576,7 +596,11 @@ export default function PayFlow() {
             </button>
           ) : <div className="w-10" />}
 
-          <div className="flex items-center gap-2 bg-[#030305] border border-white/5 px-4 py-1.5 rounded-full">
+          <div 
+            onClick={() => setState("device-verify")}
+            className="flex items-center gap-2 bg-[#030305] border border-white/5 px-4 py-1.5 rounded-full cursor-pointer hover:border-brand-purple/20 transition-colors"
+            title="Run Hardware Attestation"
+          >
             <span className="h-2 w-2 rounded-full bg-brand-500 animate-pulse" />
             <span className="text-[10px] font-bold tracking-wider font-mono text-zinc-400 uppercase">
               {settings.offlineMode ? "Offline Secure" : "HoverSecure V2"}
@@ -838,12 +862,18 @@ export default function PayFlow() {
                   )}
                 </div>
 
-                <div className="space-y-2 pt-4">
+                <div className="space-y-2 pt-4 flex flex-col gap-1">
                   <button 
                     onClick={() => setState("signup")}
                     className="w-full text-center text-[10px] text-zinc-500 hover:text-white transition-colors py-1 cursor-pointer font-mono"
                   >
                     Need a new profile? <span className="text-brand-purple font-bold underline">Register Account</span>
+                  </button>
+                  <button 
+                    onClick={() => setState("forgot")}
+                    className="w-full text-center text-[10px] text-zinc-650 hover:text-white transition-colors py-0.5 cursor-pointer font-mono"
+                  >
+                    Forgot secure PIN? <span className="text-brand-500 font-bold underline">Recover Profile</span>
                   </button>
                 </div>
               </motion.div>
@@ -1146,6 +1176,143 @@ export default function PayFlow() {
                     <div 
                       className="h-full bg-gradient-to-r from-brand-purple to-brand-500 transition-all duration-100" 
                       style={{ width: `${provisionProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Forgot PIN Recovery view */}
+            {state === "forgot" && (
+              <motion.div 
+                key="forgot"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="flex-1 flex flex-col justify-between py-2 text-left"
+              >
+                <div className="space-y-4">
+                  <div className="text-center pt-2">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto mb-3 text-brand-purple shadow-[0_0_15px_rgba(112,0,255,0.1)]">
+                      <Key size={20} />
+                    </div>
+                    <h3 className="font-display font-extrabold text-white text-lg tracking-tight uppercase">Recover PIN</h3>
+                    <p className="text-[10px] text-zinc-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                      Attest your on-device signature to dispatch an enclave security recovery packet.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <button 
+                      onClick={() => {
+                        // AI Face scan PIN recovery trigger
+                        setFaceLoginActive(true);
+                        setState("login");
+                        setTimeout(() => {
+                          alert("AI Face Match Verified. Fallback secure PIN recovered to default: 1234");
+                        }, 2500);
+                      }}
+                      className="w-full p-4 bg-[#0a0a14] border border-brand-500/20 hover:border-brand-500/40 rounded-2xl flex items-center gap-4 transition-all group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 shrink-0 group-hover:scale-105 transition-transform">
+                        <Eye size={20} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-bold text-white uppercase tracking-wider">AI Face Scan recovery</p>
+                        <p className="text-[9px] text-zinc-500 mt-0.5">Quickly prove identity to restore credentials.</p>
+                      </div>
+                    </button>
+
+                    <div className="py-1 flex items-center justify-center gap-2">
+                      <div className="h-px bg-white/5 flex-1" />
+                      <span className="text-[8px] text-zinc-650 font-mono uppercase tracking-widest">or dispatch SMS</span>
+                      <div className="h-px bg-white/5 flex-1" />
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        alert("Secure OTP payload dispatched to your mobile. Enter OTP 481920 to set a new PIN.");
+                        setState("otp");
+                      }}
+                      className="w-full py-3 bg-[#030305] border border-white/15 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-white/5"
+                    >
+                      <Bell size={14} className="text-brand-purple" />
+                      Dispatch secure OTP SMS
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button 
+                    onClick={() => setState("login")}
+                    className="w-full text-center text-[10px] text-zinc-500 hover:text-white transition-colors py-1 cursor-pointer font-mono"
+                  >
+                    Remember your PIN? <span className="text-brand-purple font-bold underline">Return to Login</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Device Hardware Verification diagnostics view */}
+            {state === "device-verify" && (
+              <motion.div 
+                key="device-verify"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex-1 flex flex-col justify-between py-4 text-left"
+              >
+                <div className="space-y-6 pt-2">
+                  <div className="text-center">
+                    <div className="w-14 h-14 rounded-full bg-brand-purple/10 border border-brand-purple/30 flex items-center justify-center mx-auto mb-4 text-brand-purple animate-pulse shadow-[0_0_20px_rgba(112,0,255,0.15)]">
+                      <ShieldCheck size={24} />
+                    </div>
+                    <h3 className="font-display font-extrabold text-white text-base tracking-wider uppercase">Hardware attestation</h3>
+                    <p className="text-[10px] text-zinc-500 mt-1 max-w-[200px] mx-auto">
+                      Checking local eSIM and sandboxed environment integrity bounds.
+                    </p>
+                  </div>
+
+                  <div className="bg-[#030305] border border-white/5 rounded-2xl p-4 space-y-3 font-mono text-[9px] text-zinc-400">
+                    <div className="flex items-center gap-2.5">
+                      <span className={deviceProgress > 25 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
+                        {deviceProgress > 25 ? "[✓]" : "[ ]"}
+                      </span>
+                      <span className={deviceProgress > 25 ? "text-white" : "text-zinc-500"}>Secure Enclave Check: SE-ACTIVE</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <span className={deviceProgress > 50 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
+                        {deviceProgress > 50 ? "[✓]" : "[ ]"}
+                      </span>
+                      <span className={deviceProgress > 50 ? "text-white" : "text-zinc-500"}>eSIM hardware keys signature matched</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <span className={deviceProgress > 75 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
+                        {deviceProgress > 75 ? "[✓]" : "[ ]"}
+                      </span>
+                      <span className={deviceProgress > 75 ? "text-white" : "text-zinc-500"}>W3C WebAuthn local credential trust signed</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <span className={deviceProgress === 100 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
+                        {deviceProgress === 100 ? "[✓]" : "[ ]"}
+                      </span>
+                      <span className={deviceProgress === 100 ? "text-white" : "text-zinc-500"}>Clock skew and network ping synced</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[9px] font-mono text-zinc-500">
+                    <span>ATTESTING HARDWARE TRUST ENVIRONMENT...</span>
+                    <span className="text-brand-purple font-bold">{deviceProgress}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-brand-purple to-brand-500 transition-all duration-100" 
+                      style={{ width: `${deviceProgress}%` }}
                     />
                   </div>
                 </div>

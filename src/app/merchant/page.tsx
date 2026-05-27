@@ -266,49 +266,64 @@ export default function MerchantDashboard() {
             <p className="text-[10px] text-zinc-500 font-mono max-w-[220px]">
               BLE Beacons emit this checkout configuration ambiently to devices inside 1.5 meters.
             </p>
-          </div>
+                 {/* AI Customer Recognition & Loyalty Engine */}
+          <div className="bg-[#09090f] border border-white/5 rounded-3xl p-6 text-left relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-brand-purple/10 text-brand-purple text-[8px] font-bold px-2.5 py-1 rounded-bl-xl border-l border-b border-brand-purple/15 uppercase font-mono animate-pulse">
+              Loyalty Engine Sync
+            </div>
 
-          {/* Payment method split analytics */}
-          <div className="bg-[#09090f] border border-white/5 rounded-3xl p-6">
-            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-6">Split Volume Share</h3>
-            
-            <div className="space-y-5">
-              <div>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-zinc-400 font-medium">HoverPay (Touchless Beacons)</span>
-                  <span className="text-brand-500 font-bold font-mono">{hoverPayShare}%</span>
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+              <Brain size={12} className="text-brand-purple" />
+              Proximity Customer AI
+            </h3>
+
+            <div className="space-y-4">
+              {/* Active Proximity Lock */}
+              <div className="bg-black/60 border border-white/5 rounded-2xl p-3.5 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold font-mono text-zinc-500 uppercase">ACTIVE RADAR MATCH</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-ping" />
                 </div>
-                <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${hoverPayShare}%` }}
-                    className="h-full bg-brand-500 rounded-full" 
-                  />
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-sm font-bold text-brand-500">
+                    👤
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Prathik (HoverID verified)</p>
+                    <p className="text-[9px] text-brand-500 font-mono mt-0.5">Telemetry Match: 99.82% Confidence</p>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-zinc-400 font-medium">Standard QR scans</span>
-                  <span className="text-zinc-500 font-bold font-mono">{(100 - hoverPayShare).toFixed(1)}%</span>
+              {/* Loyalty Insights */}
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between text-zinc-400">
+                  <span>Customer Tier</span>
+                  <span className="text-brand-500 font-bold uppercase tracking-wider font-mono">Elite Platinum</span>
                 </div>
-                <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${100 - hoverPayShare}%` }}
-                    className="h-full bg-brand-purple rounded-full" 
-                  />
+                <div className="flex justify-between text-zinc-400">
+                  <span>Visit History</span>
+                  <span className="text-white font-mono">14 checkouts this month</span>
+                </div>
+                <div className="flex justify-between text-zinc-400">
+                  <span>Loyalty Discount AI</span>
+                  <span className="text-brand-purple font-bold font-mono">15% Coupon auto-applied</span>
+                </div>
+                <div className="flex justify-between text-zinc-400">
+                  <span>Queue Bypass status</span>
+                  <span className="text-white font-bold bg-white/5 px-2 py-0.5 rounded text-[9px] uppercase font-mono">Bypass Active</span>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-8 p-3.5 bg-brand-500/5 border border-brand-500/10 rounded-2xl flex gap-2.5 items-start">
-              <ShieldCheck className="text-brand-500 shrink-0 mt-0.5" size={16} />
-              <p className="text-[10px] text-zinc-400 leading-normal">
-                Ambient physical confirmations have eliminated checkout double-scans and cash register mismatch incidents.
-              </p>
+              <div className="h-px bg-white/5 my-2" />
+
+              {/* Queue reduction stats */}
+              <div className="flex justify-between items-center text-[10px] text-zinc-500 font-mono">
+                <span>Queue reduction: -4.2 mins</span>
+                <span className="text-brand-purple font-bold">1-Wave Checkout ready</span>
+              </div>
             </div>
-          </div>
+          </div>       </div>
 
         </div>
 
