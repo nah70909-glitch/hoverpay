@@ -7,7 +7,8 @@ import {
   LayoutDashboard, WalletCards, History, Shield, Settings, Store, 
   LogOut, QrCode, Plus, ArrowUpRight, ArrowDownRight, RefreshCw, 
   Sliders, Watch, CreditCard, Flame, Calendar, Trash2, ShieldAlert,
-  Train, Building, Coffee, ShoppingBag, Leaf, Check, Volume2, User
+  Train, Building, Coffee, ShoppingBag, Leaf, Check, Volume2, User,
+  Sparkles
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { useStore } from "@/lib/store";
@@ -25,7 +26,8 @@ const chartData = [
 export default function Dashboard() {
   const { 
     balance, transactions, subscriptions, wearables, cards, settings,
-    addFunds, updateSettings, toggleSubscriptionAutoPay, toggleWearableConnection 
+    addFunds, updateSettings, toggleSubscriptionAutoPay, toggleWearableConnection,
+    isAuthenticated, userName, userPhone, logout
   } = useStore();
   
   const [mounted, setMounted] = useState(false);
@@ -37,6 +39,12 @@ export default function Dashboard() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      window.location.href = "/pay";
+    }
+  }, [mounted, isAuthenticated]);
 
   // Holographic card tilt calculations
   const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -131,10 +139,20 @@ export default function Dashboard() {
                 <User size={18} className="text-brand-purple" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-semibold text-white">Alex Sharma</p>
-                <p className="text-[10px] text-zinc-500 font-mono">alex.sharma@hpay</p>
+                <p className="text-xs font-semibold text-white">{userName}</p>
+                <p className="text-[10px] text-zinc-500 font-mono">{userName ? userName.toLowerCase() : "user"}@hpay</p>
               </div>
             </div>
+            <button 
+              onClick={() => {
+                logout();
+                window.location.href = "/pay";
+              }}
+              className="text-zinc-550 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-white/5"
+              title="Logout Profile"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </aside>
@@ -147,7 +165,7 @@ export default function Dashboard() {
         <header className="flex justify-between items-center mb-10 relative z-10">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white font-display uppercase">
-              {activeTab === "overview" && "Overview"}
+              {activeTab === "overview" && `Welcome back, ${userName || "Prathik"}`}
               {activeTab === "cards" && "Linked Accounts"}
               {activeTab === "recurring" && "Smart Subscriptions"}
               {activeTab === "transit" && "HoverID Transit passes"}
@@ -205,7 +223,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-[10px] text-white/40 font-mono">LINKED PRIMARY ACCOUNT</p>
                       <p className="text-sm font-semibold text-white mt-0.5">HDFC Bank Platinum Debit</p>
-                      <p className="text-[10px] text-zinc-500 font-mono">alex.sharma@okicici •••• 4092</p>
+                      <p className="text-[10px] text-zinc-500 font-mono">{userName ? userName.toLowerCase() : "user"}@okicici •••• 4092</p>
                     </div>
                     
                     <div className="text-right">
@@ -370,6 +388,86 @@ export default function Dashboard() {
               </div>
 
             </div>
+
+            {/* Row 3: Nearby Ambient Beacons & Quick-Pay + AI Recommendations */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Nearby Merchants Quick-Pay */}
+              <div className="lg:col-span-2 bg-[#09090f] border border-white/5 rounded-3xl p-6 text-left relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-brand-500/10 text-brand-500 text-[9px] font-bold px-3 py-1 rounded-bl-xl border-l border-b border-brand-500/15 uppercase font-mono animate-pulse">
+                  BLE Spectra Node Active
+                </div>
+                
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-brand-500 animate-ping" />
+                  Nearby Ambient Merchants
+                </h3>
+                <p className="text-xs text-zinc-500 mb-6">Localized beacons detected within your primary 5-meter RSSI ring.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {[
+                    { name: "Starbucks Register 3", icon: "☕", upi: "starbucks@okicici", dist: "0.3m", status: "Secure Mesh Locked" },
+                    { name: "Zara Fashion Terminal", icon: "👗", upi: "zara@sbi", dist: "1.1m", status: "Dynamic Proximity ready" }
+                  ].map((m, idx) => (
+                    <div key={idx} className="bg-[#030305] border border-white/5 hover:border-brand-500/25 p-4 rounded-2xl flex flex-col justify-between transition-all group">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{m.icon}</span>
+                          <div className="text-left">
+                            <p className="font-bold text-white text-xs group-hover:text-brand-500 transition-colors">{m.name}</p>
+                            <p className="text-[9px] text-zinc-500 font-mono mt-0.5">{m.upi}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold font-mono text-brand-500 bg-brand-500/5 px-2 py-0.5 rounded-full border border-brand-500/10">
+                          {m.dist}
+                        </span>
+                      </div>
+                      
+                      <button 
+                        onClick={() => window.location.href = "/pay"}
+                        className="w-full py-2 bg-white/5 group-hover:bg-brand-500 group-hover:text-black hover:bg-white/10 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Sparkles size={10} /> Smart Quick-Pay
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Ambient recommendations */}
+              <div className="bg-[#09090f] border border-white/5 rounded-3xl p-6 text-left flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-brand-purple" />
+                    AI Recommendations
+                  </h3>
+                  <p className="text-xs text-zinc-500 mb-6">Engine insights matching your daily routine.</p>
+
+                  <div className="space-y-4">
+                    <div className="p-3 bg-white/5 border border-white/5 rounded-2xl text-left">
+                      <p className="text-xs font-bold text-white flex items-center gap-1">☕ Smart Morning routine</p>
+                      <p className="text-[10px] text-zinc-400 leading-relaxed mt-1">
+                        Based on your 8:30 AM pattern, <strong className="text-brand-500">Starbucks POS 3</strong> is pre-authorized. Face match will instantly settle your ledger.
+                      </p>
+                    </div>
+                    
+                    <div className="p-3 bg-white/5 border border-white/5 rounded-2xl text-left">
+                      <p className="text-xs font-bold text-white flex items-center gap-1">🛡️ Cryptographic Shield</p>
+                      <p className="text-[10px] text-zinc-400 leading-relaxed mt-1">
+                        Device secure enclave keypair has been verified. Fraud score: <strong className="text-brand-purple">0.001% (SECURE)</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border-t border-white/5 pt-4 mt-6 flex justify-between items-center text-[10px] font-mono text-zinc-500">
+                  <span>SYSTEM OVERLAY v1.8</span>
+                  <span className="text-brand-500">SHIELD ON</span>
+                </div>
+              </div>
+
+            </div>
+
           </div>
         )}
 

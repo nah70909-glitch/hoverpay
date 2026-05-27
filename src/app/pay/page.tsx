@@ -6,7 +6,7 @@ import {
   ArrowLeft, ArrowRight, ThumbsUp, Loader2, IndianRupee, Mic, Smartphone, Watch, 
   Scan, ShieldCheck, Wifi, WifiOff, Volume2, AlertTriangle, Fingerprint, 
   HelpCircle, Bluetooth, Check, ShieldAlert, Sparkles, Hand, Eye, User,
-  XCircle, RotateCcw
+  XCircle, RotateCcw, Lock, Key, Bell, KeyRound, UserCheck, Cpu
 } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
@@ -16,7 +16,7 @@ import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-backend-webgl";
 import * as handpose from "@tensorflow-models/handpose";
 
-type PayState = "nearby" | "amount" | "verify" | "success" | "failed";
+type PayState = "signup" | "login" | "otp" | "face-reg" | "pin" | "provision" | "nearby" | "amount" | "verify" | "success" | "failed";
 type BioMethod = "face" | "hand" | "finger";
 
 const DETECTED_MERCHANTS = [
@@ -27,10 +27,38 @@ const DETECTED_MERCHANTS = [
 ];
 
 export default function PayFlow() {
-  const { balance, addTransaction, settings, updateSettings } = useStore();
-  const [state, setState] = useState<PayState>("nearby");
+  const { 
+    balance, 
+    addTransaction, 
+    settings, 
+    updateSettings, 
+    isAuthenticated, 
+    userName, 
+    userPhone, 
+    fallbackPIN, 
+    onboardUser, 
+    logout 
+  } = useStore();
+
+  const [mounted, setMounted] = useState(false);
+  const [state, setState] = useState<PayState>("signup");
   const [selectedMerchant, setSelectedMerchant] = useState(DETECTED_MERCHANTS[0]);
   const [amount, setAmount] = useState("");
+
+  // Onboarding Form States
+  const [onboardName, setOnboardName] = useState("Prathik");
+  const [onboardPhone, setOnboardPhone] = useState("");
+  const [onboardPIN, setOnboardPIN] = useState("");
+  const [loginPIN, setLoginPIN] = useState("");
+  const [enteredOTP, setEnteredOTP] = useState("");
+  const [otpNotificationVisible, setOtpNotificationVisible] = useState(false);
+
+  // Scanning & Provisioning Progress
+  const [faceRegActive, setFaceRegActive] = useState(false);
+  const [faceRegProgress, setFaceRegProgress] = useState(0);
+  const [faceLoginActive, setFaceLoginActive] = useState(false);
+  const [faceLoginProgress, setFaceLoginProgress] = useState(0);
+  const [provisionProgress, setProvisionProgress] = useState(0);
   
   // Voice Assistant States
   const [voiceListening, setVoiceListening] = useState(false);
@@ -99,6 +127,118 @@ export default function PayFlow() {
       window.location.href = "/dashboard";
     }, 3200);
   };
+
+  // Hydration safety check and initial state routing
+  useEffect(() => {
+    setMounted(true);
+    // Since Zustand store can hydrate on-client, set initial route state
+    if (useStore.persist?.hasHydrated()) {
+      setState(isAuthenticated ? "nearby" : "signup");
+    }
+  }, [isAuthenticated]);
+
+  // Dynamic OTP alert simulation
+  useEffect(() => {
+    if (state !== "otp") {
+      setOtpNotificationVisible(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setOtpNotificationVisible(true);
+      // Play a soft dynamic SMS chime
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08); // A5
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+      } catch (e) {}
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // Face Registration scan loop
+  useEffect(() => {
+    if (state !== "face-reg" || !faceRegActive) return;
+    setFaceRegProgress(0);
+    const interval = setInterval(() => {
+      setFaceRegProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setFaceRegActive(false);
+            setState("pin");
+          }, 800);
+          return 100;
+        }
+        return prev + 5;
+      });
+    }, 100);
+    return () => clearInterval(interval);
+  }, [state, faceRegActive]);
+
+  // Face ID quick login loop
+  useEffect(() => {
+    if (state !== "login" || !faceLoginActive) return;
+    setFaceLoginProgress(0);
+    const interval = setInterval(() => {
+      setFaceLoginProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setFaceLoginActive(false);
+            onboardUser(userName || "Prathik", userPhone || "9876543210", fallbackPIN || "1234");
+            setState("nearby");
+            // Successful quick login audio chime
+            try {
+              const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const osc = audioCtx.createOscillator();
+              const gain = audioCtx.createGain();
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
+              osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+              gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+              osc.start();
+              osc.stop(audioCtx.currentTime + 0.3);
+            } catch (e) {}
+          }, 1200);
+          return 100;
+        }
+        return prev + 6;
+      });
+    }, 90);
+    return () => clearInterval(interval);
+  }, [state, faceLoginActive]);
+
+  // Provisioning progress loop
+  useEffect(() => {
+    if (state !== "provision") return;
+    setProvisionProgress(0);
+    const interval = setInterval(() => {
+      setProvisionProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            onboardUser(onboardName, onboardPhone, onboardPIN);
+            setState("nearby");
+          }, 1200);
+          return 100;
+        }
+        return prev + 4;
+      });
+    }, 120);
+    return () => clearInterval(interval);
+  }, [state, onboardName, onboardPhone, onboardPIN]);
 
   // Web Speech API initialization
   useEffect(() => {
@@ -211,7 +351,7 @@ export default function PayFlow() {
       }
     };
 
-    if (state === "verify") {
+    if (state === "verify" || state === "face-reg" || (state === "login" && faceLoginActive)) {
       startWebcam();
     } else {
       if (activeStreamRef.current) {
@@ -228,7 +368,7 @@ export default function PayFlow() {
       }
       if (detectionIntervalRef.current) cancelAnimationFrame(detectionIntervalRef.current);
     };
-  }, [state]);
+  }, [state, faceLoginActive]);
 
   // Secure Enclave Countdown Ticker
   useEffect(() => {
@@ -418,9 +558,17 @@ export default function PayFlow() {
           {state !== "success" && state !== "failed" ? (
             <button 
               onClick={() => {
-                if (state === "nearby") window.location.href = "/dashboard";
-                if (state === "amount") setState("nearby");
-                if (state === "verify") setState("amount");
+                if (state === "signup" || state === "login") window.location.href = "/";
+                else if (state === "otp") setState("signup");
+                else if (state === "face-reg") setState("otp");
+                else if (state === "pin") setState("face-reg");
+                else if (state === "provision") setState("pin");
+                else if (state === "nearby") {
+                  logout();
+                  setState("signup");
+                }
+                else if (state === "amount") setState("nearby");
+                else if (state === "verify") setState("amount");
               }}
               className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
             >
@@ -437,7 +585,7 @@ export default function PayFlow() {
         </header>
 
         {/* Dynamic Wearable Toggle Side Widget */}
-        {state !== "success" && state !== "failed" && (
+        {state !== "success" && state !== "failed" && state !== "signup" && state !== "login" && state !== "otp" && state !== "face-reg" && state !== "pin" && state !== "provision" && (
           <div className="absolute top-28 right-4 flex flex-col gap-2 z-40 bg-black/40 border border-white/5 backdrop-blur-md p-1.5 rounded-xl">
             <button 
               onClick={() => setWearableType("phone")}
@@ -471,9 +619,540 @@ export default function PayFlow() {
 
         {/* Content Container */}
         <main className="flex-1 w-full flex flex-col px-6 relative overflow-hidden pb-8">
+          
+          {/* Sliding Top OTP Notification Banner */}
+          <AnimatePresence>
+            {otpNotificationVisible && (
+              <motion.div 
+                initial={{ opacity: 0, y: -100, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -100, scale: 0.95 }}
+                onClick={() => {
+                  setEnteredOTP("481920");
+                  // Soft notification chime sound
+                  try {
+                    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = "sine";
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                  } catch (e) {}
+                  setTimeout(() => {
+                    setState("face-reg");
+                  }, 800);
+                }}
+                className="absolute top-4 left-4 right-4 bg-[#0a0a14]/95 border border-brand-500/30 backdrop-blur-md p-3.5 rounded-2xl z-50 flex items-start gap-3 shadow-[0_12px_30px_rgba(0,255,170,0.15)] cursor-pointer hover:border-brand-500 transition-colors animate-pulse"
+              >
+                <div className="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 shrink-0">
+                  <Bell size={16} className="animate-bounce" />
+                </div>
+                <div className="text-left flex-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-brand-500 uppercase tracking-wider font-mono">HoverSecure Identity</span>
+                    <span className="text-[8px] text-zinc-500">now</span>
+                  </div>
+                  <p className="text-[11px] font-semibold text-white mt-0.5">Verification key ready</p>
+                  <p className="text-[9px] text-zinc-400 mt-0.5">Registration code is <strong className="text-brand-500 font-mono">481920</strong>. Tap to auto-provision profile.</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence mode="wait">
-            
-            {/* 1. NEARBY MERCHANTS DISCOVERY STATE */}
+
+            {/* A. ONBOARDING SIGNUP STATE */}
+            {state === "signup" && (
+              <motion.div 
+                key="signup"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="flex-1 flex flex-col justify-between py-2 text-left"
+              >
+                <div className="space-y-4">
+                  <div className="text-center pt-2">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mx-auto mb-3 text-brand-500 shadow-[0_0_15px_rgba(0,255,170,0.1)]">
+                      <UserCheck size={22} />
+                    </div>
+                    <h3 className="font-display font-extrabold text-white text-lg tracking-tight uppercase">Create Account</h3>
+                    <p className="text-[10px] text-zinc-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                      Attest a next-generation ambient wallet signature on top of UPI Lite.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Full Name</label>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          placeholder="Prathik" 
+                          value={onboardName}
+                          onChange={(e) => setOnboardName(e.target.value)}
+                          className="w-full bg-[#030305] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-zinc-750 focus:outline-none focus:border-brand-500/50 transition-colors"
+                        />
+                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-650 text-xs">👤</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Mobile Number</label>
+                      <div className="relative">
+                        <input 
+                          type="tel" 
+                          placeholder="+91 98765 43210" 
+                          value={onboardPhone}
+                          onChange={(e) => setOnboardPhone(e.target.value)}
+                          className="w-full bg-[#030305] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-zinc-750 focus:outline-none focus:border-brand-500/50 transition-colors"
+                        />
+                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-650 text-[10px]">🇮🇳</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4">
+                  <button 
+                    onClick={() => {
+                      if (!onboardPhone) {
+                        alert("Please fill in a valid mobile phone ledger.");
+                        return;
+                      }
+                      setState("otp");
+                    }}
+                    className="w-full py-3.5 bg-brand-500 text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/10"
+                  >
+                    Initialize Keypair <ArrowRight size={14} />
+                  </button>
+
+                  <button 
+                    onClick={() => setState("login")}
+                    className="w-full text-center text-[10px] text-zinc-500 hover:text-white transition-colors py-1 cursor-pointer font-mono"
+                  >
+                    Already registered? <span className="text-brand-500 font-bold underline">Sign In</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* B. ONBOARDING LOGIN STATE */}
+            {state === "login" && (
+              <motion.div 
+                key="login"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="flex-1 flex flex-col justify-between py-2 text-left"
+              >
+                <div className="space-y-4">
+                  <div className="text-center pt-2">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto mb-3 text-brand-purple shadow-[0_0_15px_rgba(112,0,255,0.1)]">
+                      <Lock size={20} />
+                    </div>
+                    <h3 className="font-display font-extrabold text-white text-lg tracking-tight uppercase">Authenticate</h3>
+                    <p className="text-[10px] text-zinc-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                      Choose AI Biometrics or fallback PIN to unlock your secure ledger credentials.
+                    </p>
+                  </div>
+
+                  {faceLoginActive ? (
+                    <div className="relative h-44 bg-black border border-white/10 rounded-2xl overflow-hidden flex flex-col items-center justify-center">
+                      <video 
+                        ref={videoRef}
+                        autoPlay 
+                        playsInline 
+                        muted 
+                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${cameraActive ? 'opacity-70' : 'opacity-0'}`}
+                      />
+                      
+                      {!cameraActive && (
+                        <div className="absolute inset-0 bg-[#09090f] flex flex-col items-center justify-center text-zinc-500 z-10">
+                          <Loader2 className="animate-spin text-brand-purple mb-2" size={20} />
+                          <span className="text-[8px] font-mono uppercase tracking-widest">Enclave Camera Opening...</span>
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
+                        <div className="relative w-28 h-28 border border-brand-purple/20 rounded-full flex items-center justify-center">
+                          <div className={`absolute inset-0 border-2 rounded-full transition-colors duration-500 ${faceLoginProgress > 80 ? 'border-brand-500' : 'border-brand-purple/40 animate-pulse'}`} />
+                          <motion.div 
+                            animate={{ y: [-40, 40, -40] }}
+                            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                            className="absolute w-full h-0.5 bg-brand-purple shadow-[0_0_10px_rgba(112,0,255,0.7)]"
+                          />
+                          <Eye className="text-brand-purple/40" size={24} />
+                        </div>
+                      </div>
+
+                      <div className="absolute bottom-2 left-2 right-2 bg-black/85 border border-white/5 backdrop-blur-sm p-1.5 rounded-lg flex items-center justify-between text-[8px] font-mono text-zinc-400 z-30">
+                        <span>SCANNING TOPOLOGY...</span>
+                        <span className="text-brand-purple font-bold">{faceLoginProgress}%</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-2">
+                      <button 
+                        onClick={() => setFaceLoginActive(true)}
+                        className="w-full p-3.5 bg-[#0a0a14] border border-brand-500/20 hover:border-brand-500/40 rounded-2xl flex items-center gap-4 transition-all group"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 shrink-0 group-hover:scale-105 transition-transform">
+                          <Eye size={20} />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-white uppercase tracking-wider">AI Face Detection</p>
+                          <p className="text-[9px] text-zinc-500 mt-0.5">Recognize returning users instantly.</p>
+                        </div>
+                      </button>
+
+                      <div className="py-1 flex items-center justify-center gap-2">
+                        <div className="h-px bg-white/5 flex-1" />
+                        <span className="text-[8px] text-zinc-650 font-mono uppercase tracking-widest">or fallback PIN</span>
+                        <div className="h-px bg-white/5 flex-1" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Secure PIN</label>
+                        <input 
+                          type="password" 
+                          maxLength={4}
+                          placeholder="••••" 
+                          value={loginPIN}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            setLoginPIN(val);
+                            if (val === fallbackPIN || (fallbackPIN === "" && val === "1234")) {
+                              onboardUser(userName || "Prathik", userPhone || "9876543210", fallbackPIN || "1234");
+                              setState("nearby");
+                            }
+                          }}
+                          className="w-full bg-[#030305] border border-white/10 rounded-xl px-4 py-2 text-center text-lg tracking-widest text-white placeholder:text-zinc-800 focus:outline-none focus:border-brand-purple/50 transition-colors font-mono"
+                        />
+                        <p className="text-[8px] text-zinc-600 text-center font-mono mt-1">Default PIN is 1234 for sandbox login.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-4">
+                  <button 
+                    onClick={() => setState("signup")}
+                    className="w-full text-center text-[10px] text-zinc-500 hover:text-white transition-colors py-1 cursor-pointer font-mono"
+                  >
+                    Need a new profile? <span className="text-brand-purple font-bold underline">Register Account</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* C. ONBOARDING OTP VERIFICATION STATE */}
+            {state === "otp" && (
+              <motion.div 
+                key="otp"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="flex-1 flex flex-col justify-between py-2 text-left"
+              >
+                <div>
+                  <div className="text-center pt-2">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mx-auto mb-3 text-brand-500 shadow-[0_0_15px_rgba(0,255,170,0.1)]">
+                      <Key size={20} />
+                    </div>
+                    <h3 className="font-display font-extrabold text-white text-lg tracking-tight uppercase">Verify OTP</h3>
+                    <p className="text-[10px] text-zinc-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                      Handset validation required. We sent an encrypted transaction token to {onboardPhone || "+91 98765 43210"}.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-between items-center gap-2 max-w-[260px] mx-auto my-5">
+                    {[...Array(6)].map((_, idx) => (
+                      <div 
+                        key={idx}
+                        className={`w-8 h-10 rounded-xl bg-[#030305] border flex items-center justify-center text-xs font-bold font-mono transition-all ${
+                          enteredOTP.length === idx 
+                            ? 'border-brand-500 shadow-[0_0_10px_rgba(0,255,170,0.1)] scale-105' 
+                            : enteredOTP.length > idx 
+                              ? 'border-white/20 text-white' 
+                              : 'border-white/5 text-zinc-700'
+                        }`}
+                      >
+                        {enteredOTP[idx] || "•"}
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-[8px] text-zinc-650 text-center font-mono uppercase tracking-widest mt-1 animate-pulse">
+                    Awaiting encrypted handset telemetry push...
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {["1", "2", "3", "4", "5", "6", "7", "8", "9", "delete", "0", "verify"].map((key) => (
+                      <button 
+                        key={key}
+                        onClick={() => {
+                          if (key === "delete") {
+                            setEnteredOTP(prev => prev.slice(0, -1));
+                          } else if (key === "verify") {
+                            if (enteredOTP === "481920") {
+                              setState("face-reg");
+                            } else {
+                              alert("Enclave code mismatch. Enter code 481920 or tap notification.");
+                            }
+                          } else {
+                            if (enteredOTP.length < 6) {
+                              const next = enteredOTP + key;
+                              setEnteredOTP(next);
+                              if (next === "481920") {
+                                setTimeout(() => {
+                                  setState("face-reg");
+                                }, 400);
+                              }
+                            }
+                          }
+                        }}
+                        className={`py-2.5 text-xs font-semibold rounded-xl flex items-center justify-center transition-colors border ${
+                          key === "verify" 
+                            ? 'bg-brand-500 border-brand-500/20 text-black font-bold' 
+                            : 'bg-white/5 border-white/5 hover:bg-white/10 active:bg-brand-500/10 text-white'
+                        }`}
+                      >
+                        {key === "delete" ? "←" : key === "verify" ? "✓" : key}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* D. ONBOARDING FACE BIOMETRIC REGISTRATION STATE */}
+            {state === "face-reg" && (
+              <motion.div 
+                key="face-reg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex-1 flex flex-col justify-between py-2 text-left"
+              >
+                <div className="relative flex-1 bg-black border border-white/10 rounded-2xl overflow-hidden shadow-inner flex flex-col min-h-[220px]">
+                  <video 
+                    ref={videoRef}
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${cameraActive ? 'opacity-70' : 'opacity-0'}`}
+                  />
+
+                  {!cameraActive && (
+                    <div className="absolute inset-0 bg-[#09090f] flex flex-col items-center justify-center text-zinc-500 p-6 z-10">
+                      <Loader2 className="animate-spin text-brand-500 mb-2" size={20} />
+                      <span className="text-[9px] font-mono uppercase tracking-widest">Enabling Web Biometrics...</span>
+                    </div>
+                  )}
+
+                  {faceRegActive ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
+                      <div className="relative w-36 h-36 border border-brand-500/20 rounded-[30px] flex items-center justify-center">
+                        <div className={`absolute inset-0 border-2 rounded-[30px] transition-colors duration-500 ${faceRegProgress > 80 ? 'border-brand-500' : 'border-brand-500/40 animate-pulse'}`} />
+                        <motion.div 
+                          animate={{ y: [-60, 60, -60] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                          className="absolute w-full h-0.5 bg-brand-500 shadow-[0_0_10px_rgba(0,255,170,0.7)] z-20"
+                        />
+                        <Eye className="text-brand-500/30" size={32} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-20">
+                      <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 mb-2">
+                        <Eye size={22} />
+                      </div>
+                      <p className="text-[10px] font-bold text-white uppercase tracking-widest font-mono">Face Mesh attestation</p>
+                      <button 
+                        onClick={() => setFaceRegActive(true)}
+                        className="mt-3 px-4 py-2 bg-brand-500 text-black font-extrabold text-[10px] uppercase tracking-wider rounded-lg hover:bg-brand-600 transition-colors"
+                      >
+                        Start 3D Mapping
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="absolute bottom-2 left-2 right-2 bg-black/75 border border-white/5 p-2 rounded-lg flex flex-col gap-0.5 text-[8px] font-mono text-zinc-400 z-30">
+                    <div className="flex justify-between">
+                      <span>Status: {faceRegActive ? "MAPPING BIOMETRIC HASH..." : "AWAITING ACTIVATE..."}</span>
+                      <span className="text-brand-500 font-bold">{faceRegProgress}%</span>
+                    </div>
+                    {faceRegActive && (
+                      <p className="text-zinc-500 text-[7px] truncate mt-0.5">
+                        {faceRegProgress < 30 && "> Mapping pupil tracking coordinates..."}
+                        {faceRegProgress >= 30 && faceRegProgress < 60 && "> Tracing nose bridge & jawlines..."}
+                        {faceRegProgress >= 60 && faceRegProgress < 90 && "> Validating blink telemetry liveness..."}
+                        {faceRegProgress >= 90 && "> Signing hash certificate with UIDAI Lite..."}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-[#030305] border border-white/5 p-3 rounded-2xl mt-3 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500 shrink-0">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[10px] font-bold text-white uppercase tracking-wide">Privacy Attested</p>
+                    <p className="text-[8px] text-zinc-500 leading-snug">
+                      Your high-entropy facial signature mesh is cryptographically sealed in the browser's local sandbox enclave. No image data leaves this client.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* E. ONBOARDING FALLBACK PIN SETUP STATE */}
+            {state === "pin" && (
+              <motion.div 
+                key="pin"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="flex-1 flex flex-col justify-between py-2 text-left"
+              >
+                <div>
+                  <div className="text-center pt-2">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto mb-3 text-brand-purple shadow-[0_0_15px_rgba(112,0,255,0.1)]">
+                      <KeyRound size={20} />
+                    </div>
+                    <h3 className="font-display font-extrabold text-white text-lg tracking-tight uppercase">Setup PIN</h3>
+                    <p className="text-[10px] text-zinc-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
+                      Establish a fallback 4-digit security PIN for offline and wearable quick validations.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-center gap-5 my-8">
+                    {[...Array(4)].map((_, idx) => (
+                      <div 
+                        key={idx}
+                        className={`w-4 h-4 rounded-full transition-all duration-150 ${
+                          onboardPIN.length > idx 
+                            ? 'bg-brand-purple shadow-[0_0_8px_#7000ff] scale-110' 
+                            : 'bg-white/10'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="grid grid-cols-3 gap-2.5 mb-2">
+                    {["1", "2", "3", "4", "5", "6", "7", "8", "9", "delete", "0", "confirm"].map((key) => (
+                      <button 
+                        key={key}
+                        onClick={() => {
+                          if (key === "delete") {
+                            setOnboardPIN(prev => prev.slice(0, -1));
+                          } else if (key === "confirm") {
+                            if (onboardPIN.length === 4) {
+                              setState("provision");
+                            } else {
+                              alert("Please enter a 4-digit PIN.");
+                            }
+                          } else {
+                            if (onboardPIN.length < 4) {
+                              const next = onboardPIN + key;
+                              setOnboardPIN(next);
+                              if (next.length === 4) {
+                                setTimeout(() => {
+                                  setState("provision");
+                                }, 400);
+                              }
+                            }
+                          }
+                        }}
+                        className={`py-3 text-base font-semibold rounded-xl flex items-center justify-center transition-colors border ${
+                          key === "confirm"
+                            ? 'bg-brand-purple border-brand-purple/20 text-white font-bold'
+                            : 'bg-white/5 border-white/5 hover:bg-white/10 text-white'
+                        }`}
+                      >
+                        {key === "delete" ? "←" : key === "confirm" ? "✓" : key}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* F. ONBOARDING PROVISIONING STATE */}
+            {state === "provision" && (
+              <motion.div 
+                key="provision"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex-1 flex flex-col justify-between py-4 text-left"
+              >
+                <div className="space-y-6 pt-2">
+                  <div className="text-center">
+                    <div className="w-14 h-14 rounded-full bg-brand-500/10 border border-brand-500/30 flex items-center justify-center mx-auto mb-4 text-brand-500 animate-spin shadow-[0_0_20px_rgba(0,255,170,0.15)]">
+                      <Cpu size={24} />
+                    </div>
+                    <h3 className="font-display font-extrabold text-white text-base tracking-wider uppercase">Provisioning Identity</h3>
+                    <p className="text-[10px] text-zinc-500 mt-1 max-w-[200px] mx-auto">
+                      Attesting decentralization proofs and compiling secure keys on-device.
+                    </p>
+                  </div>
+
+                  <div className="bg-[#030305] border border-white/5 rounded-2xl p-4 space-y-3 font-mono text-[9px] text-zinc-400">
+                    <div className="flex items-center gap-2.5">
+                      <span className={provisionProgress > 20 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
+                        {provisionProgress > 20 ? "[✓]" : "[ ]"}
+                      </span>
+                      <span className={provisionProgress > 20 ? "text-white" : "text-zinc-500"}>Generating Enclave Cryptography Keys</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <span className={provisionProgress > 50 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
+                        {provisionProgress > 50 ? "[✓]" : "[ ]"}
+                      </span>
+                      <span className={provisionProgress > 50 ? "text-white" : "text-zinc-500"}>Attesting W3C WebAuthn credentials</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <span className={provisionProgress > 75 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
+                        {provisionProgress > 75 ? "[✓]" : "[ ]"}
+                      </span>
+                      <span className={provisionProgress > 75 ? "text-white" : "text-zinc-500"}>Generating Face ZK biometrics mesh</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <span className={provisionProgress === 100 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
+                        {provisionProgress === 100 ? "[✓]" : "[ ]"}
+                      </span>
+                      <span className={provisionProgress === 100 ? "text-white" : "text-zinc-500"}>Deploying local UPI Lite smart ledger</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[9px] font-mono text-zinc-500">
+                    <span>SEALING TELEMETRY PACK...</span>
+                    <span className="text-brand-500">{provisionProgress}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-brand-purple to-brand-500 transition-all duration-100" 
+                      style={{ width: `${provisionProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* G. NEARBY MERCHANTS DISCOVERY STATE */}
             {state === "nearby" && (
               <motion.div 
                 key="nearby"
@@ -696,7 +1375,7 @@ export default function PayFlow() {
                           <div className="h-full bg-brand-500 transition-all duration-100" style={{ width: `${faceProgress}%` }} />
                         </div>
                         <p className="text-[9px] text-zinc-500 font-mono mt-1">
-                          {faceScanningActive ? `Status: Matching Enclave Hash (${faceProgress}%)` : "Status: Awaiting Scan Request (0%)"}
+                          {faceScanningActive ? `Recognized: Welcome back, ${userName || "Prathik"} (${faceProgress}%)` : "Awaiting Face Signature Match (0%)"}
                         </p>
                       </div>
                     </div>

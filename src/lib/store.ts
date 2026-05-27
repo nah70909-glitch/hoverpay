@@ -42,6 +42,11 @@ export interface LinkedCard {
 
 interface AppState {
   balance: number;
+  userName: string;
+  userPhone: string;
+  isAuthenticated: boolean;
+  hasRegisteredFace: boolean;
+  fallbackPIN: string;
   transactions: Txn[];
   subscriptions: Subscription[];
   wearables: Wearable[];
@@ -54,6 +59,8 @@ interface AppState {
     ambientRange: number; // in meters
     riskThreshold: number; // in %
   };
+  onboardUser: (name: string, phone: string, pin: string) => void;
+  logout: () => void;
   addTransaction: (txn: Omit<Txn, 'id'>) => void;
   addFunds: (amount: number) => void;
   updateSettings: (settings: Partial<AppState['settings']>) => void;
@@ -65,6 +72,11 @@ export const useStore = create<AppState>()(
   persist(
     (set) => ({
       balance: 154500, // ₹1,54,500 initial balance
+      userName: 'Prathik',
+      userPhone: '',
+      isAuthenticated: false,
+      hasRegisteredFace: false,
+      fallbackPIN: '',
       transactions: [
         { id: '1', name: 'Starbucks Coffee', date: 'Today, 08:30 AM', amount: 340, status: 'Success', category: 'Food & Beverage', method: 'Hover Gesture', fraudScore: 0.01 },
         { id: '2', name: 'Zara Fashion', date: 'Yesterday, 07:15 PM', amount: 4890, status: 'Success', category: 'Shopping', method: 'NFC Ring Tap', fraudScore: 0.02 },
@@ -93,6 +105,16 @@ export const useStore = create<AppState>()(
         ambientRange: 1.5,
         riskThreshold: 1.2
       },
+      onboardUser: (name, phone, pin) => set(() => ({
+        userName: name || 'Prathik',
+        userPhone: phone,
+        fallbackPIN: pin,
+        hasRegisteredFace: true,
+        isAuthenticated: true
+      })),
+      logout: () => set(() => ({
+        isAuthenticated: false
+      })),
       addTransaction: (txn) => set((state) => ({
         balance: state.balance - txn.amount,
         transactions: [
