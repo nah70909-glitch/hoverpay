@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: #09090b; /* zinc-950 */
+  --color-foreground: #fafafa; /* zinc-50 */
+
+  --color-brand-500: #10b981; /* Emerald 500 for money/success */
+  --color-brand-600: #059669; 
+}
+
+@layer base {
+  * {
+    border-color: #27272a; /* zinc-800 */
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+.glass-panel {
+  @apply bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-sm;
+}
+
+.card-gradient {
+  background: linear-gradient(145deg, #18181b 0%, #09090b 100%);
+}
