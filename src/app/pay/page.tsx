@@ -1588,9 +1588,19 @@ export default function PayFlow() {
 
                   <button 
                     onClick={() => setState("amount")}
-                    className="w-full py-3.5 bg-brand-500 text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 hover:bg-brand-600 transition-colors"
+                    className="w-full py-3.5 bg-brand-500 text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 hover:bg-brand-600 transition-colors cursor-pointer"
                   >
                     Proceed to Pay {selectedMerchant.name.split(" ")[0]} <ArrowRight size={14} />
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      logout();
+                      setState("signup");
+                    }}
+                    className="w-full py-2.5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 hover:border-red-500/20 text-red-400 hover:text-red-300 font-mono text-[9px] uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    Disconnect & Logout Session
                   </button>
                 </div>
               </motion.div>
