@@ -51,6 +51,9 @@ interface AppState {
   subscriptions: Subscription[];
   wearables: Wearable[];
   cards: LinkedCard[];
+  twilioSid: string;
+  twilioToken: string;
+  twilioFrom: string;
   settings: {
     voiceEnabled: boolean;
     offlineMode: boolean;
@@ -64,6 +67,7 @@ interface AppState {
   addTransaction: (txn: Omit<Txn, 'id'>) => void;
   addFunds: (amount: number) => void;
   updateSettings: (settings: Partial<AppState['settings']>) => void;
+  updateTwilioSettings: (settings: { twilioSid: string; twilioToken: string; twilioFrom: string }) => void;
   toggleSubscriptionAutoPay: (id: string) => void;
   toggleWearableConnection: (id: string) => void;
 }
@@ -105,6 +109,9 @@ export const useStore = create<AppState>()(
         ambientRange: 1.5,
         riskThreshold: 1.2
       },
+      twilioSid: '',
+      twilioToken: '',
+      twilioFrom: '',
       onboardUser: (name, phone, pin) => set(() => ({
         userName: name || 'Prathik',
         userPhone: phone,
@@ -129,6 +136,11 @@ export const useStore = create<AppState>()(
       addFunds: (amount) => set((state) => ({ balance: state.balance + amount })),
       updateSettings: (newSettings) => set((state) => ({
         settings: { ...state.settings, ...newSettings }
+      })),
+      updateTwilioSettings: (settings) => set(() => ({
+        twilioSid: settings.twilioSid,
+        twilioToken: settings.twilioToken,
+        twilioFrom: settings.twilioFrom
       })),
       toggleSubscriptionAutoPay: (id) => set((state) => ({
         subscriptions: state.subscriptions.map(sub => 

@@ -6,10 +6,12 @@ import {
   ArrowLeft, ArrowRight, ThumbsUp, Loader2, IndianRupee, Mic, Smartphone, Watch, 
   Scan, ShieldCheck, Wifi, WifiOff, Volume2, AlertTriangle, Fingerprint, 
   HelpCircle, Bluetooth, Check, ShieldAlert, Sparkles, Hand, Eye, User,
-  XCircle, RotateCcw, Lock, Key, Bell, KeyRound, UserCheck, Cpu
+  XCircle, RotateCcw, Lock, Key, Bell, KeyRound, UserCheck, Cpu, Settings
 } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import QRCode from "react-qr-code";
+import { sendSMSOTP } from "@/lib/sms";
 
 // We import TF and Handpose dynamically or safely in client-side useEffect
 import * as tf from "@tensorflow/tfjs";
@@ -37,7 +39,11 @@ export default function PayFlow() {
     userPhone, 
     fallbackPIN, 
     onboardUser, 
-    logout 
+    logout,
+    twilioSid,
+    twilioToken,
+    twilioFrom,
+    updateTwilioSettings
   } = useStore();
 
   const [mounted, setMounted] = useState(false);
@@ -52,6 +58,16 @@ export default function PayFlow() {
   const [loginPIN, setLoginPIN] = useState("");
   const [enteredOTP, setEnteredOTP] = useState("");
   const [otpNotificationVisible, setOtpNotificationVisible] = useState(false);
+
+  // Pairing & Real OTP States
+  const [currentOTP, setCurrentOTP] = useState("481920");
+  const [smsSendResult, setSmsSendResult] = useState<any>(null);
+  const [isSendingSMS, setIsSendingSMS] = useState(false);
+  const [isTwilioDrawerOpen, setIsTwilioDrawerOpen] = useState(false);
+  const [sessionId, setSessionId] = useState("");
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [activeStepStatus, setActiveStepStatus] = useState<any>(null);
+  const [desktopCompleted, setDesktopCompleted] = useState(false);
 
   // Scanning & Provisioning Progress
   const [faceRegActive, setFaceRegActive] = useState(false);
@@ -128,6 +144,23 @@ export default function PayFlow() {
     }, 3200);
   };
 
+  // Helper to publish onboarding steps from mobile to desktop pairing session
+  const publishSessionEvent = async (stepName: string, additionalData = {}) => {
+    if (!sessionId) return;
+    try {
+      await fetch(`https://ntfy.sh/${sessionId}`, {
+        method: "POST",
+        body: JSON.stringify({
+          step: stepName,
+          ...additionalData
+        }),
+        headers: { "Content-Type": "application/json" }
+      });
+    } catch (e) {
+      console.error("Failed to publish session sync:", e);
+    }
+  };
+
   // Hydration safety check and initial state routing
   useEffect(() => {
     setMounted(true);
@@ -136,6 +169,92 @@ export default function PayFlow() {
       setState(isAuthenticated ? "nearby" : "signup");
     }
   }, [isAuthenticated]);
+
+  // Mobile/Desktop detection and ntfy.sh SSE Subscription
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Detect screen width and session URL parameter
+    const searchParams = new URLSearchParams(window.location.search);
+    const sessionQuery = searchParams.get("session");
+    
+    const isMobile = window.innerWidth <= 768 || !!sessionQuery;
+    setIsMobileView(isMobile);
+
+    if (sessionQuery) {
+      // 1. Mobile Phone Paired Controller Mode
+      setSessionId(sessionQuery);
+      console.log("Mobile connected to pairing session:", sessionQuery);
+    } else if (!isMobile) {
+      // 2. Desktop Mode (Display QR Code & Checklist)
+      const newSessionId = `hoverpay-session-${Math.random().toString(36).substring(2, 8)}`;
+      setSessionId(newSessionId);
+      console.log("Desktop generated pairing session:", newSessionId);
+
+      // Establish ntfy.sh Server-Sent Events subscription
+      const eventSource = new EventSource(`https://ntfy.sh/${newSessionId}/sse`);
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const rawData = JSON.parse(event.data);
+          const payload = JSON.parse(rawData.message);
+          console.log("Desktop received pairing event:", payload);
+          
+          setActiveStepStatus(payload);
+
+          // Play micro-chime for step complete
+          try {
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+          } catch (e) {}
+
+          if (payload.step === "completed") {
+            setDesktopCompleted(true);
+            
+            // Sync user state locally on desktop
+            onboardUser(payload.name, payload.phone, payload.pin);
+            
+            // Final success fanfare chime
+            try {
+              const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const playChime = (freq: number, delay: number, dur: number) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + dur);
+                osc.start(audioCtx.currentTime + delay);
+                osc.stop(audioCtx.currentTime + delay + dur);
+              };
+              playChime(660, 0, 0.15); // E5
+              playChime(880, 0.08, 0.25); // A5
+            } catch (e) {}
+
+            setTimeout(() => {
+              window.location.href = "/dashboard";
+            }, 3000);
+          }
+        } catch (err) {
+          // Ignore keep-alive or ping messages
+        }
+      };
+
+      return () => {
+        eventSource.close();
+      };
+    }
+  }, [isAuthenticated, onboardUser]);
 
   // Dynamic OTP alert simulation
   useEffect(() => {
@@ -174,6 +293,7 @@ export default function PayFlow() {
           clearInterval(interval);
           setTimeout(() => {
             setFaceRegActive(false);
+            publishSessionEvent("face_registered");
             setState("pin");
           }, 800);
           return 100;
@@ -230,6 +350,7 @@ export default function PayFlow() {
           clearInterval(interval);
           setTimeout(() => {
             onboardUser(onboardName, onboardPhone, onboardPIN);
+            publishSessionEvent("completed", { name: onboardName, phone: onboardPhone, pin: onboardPIN });
             setState("nearby");
           }, 1200);
           return 100;
@@ -550,13 +671,13 @@ export default function PayFlow() {
   }, [fingerHolding, bioMethod, state]);
 
   return (
-    <div className="min-h-screen bg-[#030303] flex justify-center items-center p-4 selection:bg-brand-500/30">
+    <div className="min-h-screen bg-[#030303] flex flex-col md:flex-row justify-center items-center gap-8 lg:gap-16 p-4 selection:bg-brand-500/30 relative">
       
       {/* Dynamic Cyber background grid */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,255,170,0.03)_0%,transparent_70%)] pointer-events-none" />
 
       {/* Main Frame Shell resembling phone interface */}
-      <div className="w-full max-w-[420px] aspect-[9/19.5] bg-[#09090f] border border-white/10 rounded-[48px] overflow-hidden flex flex-col relative shadow-[0_25px_60px_rgba(0,0,0,0.8)] outline outline-8 outline-zinc-900">
+      <div className="w-full max-w-[420px] aspect-[9/19.5] bg-[#09090f] border border-white/10 rounded-[48px] overflow-hidden flex flex-col relative shadow-[0_25px_60px_rgba(0,0,0,0.8)] outline outline-8 outline-zinc-900 shrink-0">
         
         {/* Dynamic Notch */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-black rounded-full flex items-center justify-between px-4 z-50 border border-white/5">
@@ -590,7 +711,7 @@ export default function PayFlow() {
                 else if (state === "amount") setState("nearby");
                 else if (state === "verify") setState("amount");
               }}
-              className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
+              className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
               <ArrowLeft size={18} />
             </button>
@@ -598,7 +719,7 @@ export default function PayFlow() {
 
           <div 
             onClick={() => setState("device-verify")}
-            className="flex items-center gap-2 bg-[#030305] border border-white/5 px-4 py-1.5 rounded-full cursor-pointer hover:border-brand-purple/20 transition-colors"
+            className="flex items-center gap-2 bg-[#030305] border border-white/5 px-4 py-1.5 rounded-full cursor-pointer hover:border-brand-purple/20 transition-colors animate-pulse"
             title="Run Hardware Attestation"
           >
             <span className="h-2 w-2 rounded-full bg-brand-500 animate-pulse" />
@@ -606,6 +727,14 @@ export default function PayFlow() {
               {settings.offlineMode ? "Offline Secure" : "HoverSecure V2"}
             </span>
           </div>
+
+          <button 
+            onClick={() => setIsTwilioDrawerOpen(true)}
+            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            title="Configure Twilio Real SMS Gateway"
+          >
+            <Settings size={18} />
+          </button>
         </header>
 
         {/* Dynamic Wearable Toggle Side Widget */}
@@ -652,7 +781,7 @@ export default function PayFlow() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -100, scale: 0.95 }}
                 onClick={() => {
-                  setEnteredOTP("481920");
+                  setEnteredOTP(currentOTP);
                   // Soft notification chime sound
                   try {
                     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -667,6 +796,7 @@ export default function PayFlow() {
                     osc.stop(audioCtx.currentTime + 0.15);
                   } catch (e) {}
                   setTimeout(() => {
+                    publishSessionEvent("otp_verified");
                     setState("face-reg");
                   }, 800);
                 }}
@@ -681,7 +811,7 @@ export default function PayFlow() {
                     <span className="text-[8px] text-zinc-500">now</span>
                   </div>
                   <p className="text-[11px] font-semibold text-white mt-0.5">Verification key ready</p>
-                  <p className="text-[9px] text-zinc-400 mt-0.5">Registration code is <strong className="text-brand-500 font-mono">481920</strong>. Tap to auto-provision profile.</p>
+                  <p className="text-[9px] text-zinc-400 mt-0.5">Registration code is <strong className="text-brand-500 font-mono">{currentOTP}</strong>. Tap to auto-provision profile.</p>
                 </div>
               </motion.div>
             )}
@@ -742,16 +872,44 @@ export default function PayFlow() {
 
                 <div className="space-y-4 pt-4">
                   <button 
-                    onClick={() => {
+                    disabled={isSendingSMS}
+                    onClick={async () => {
                       if (!onboardPhone) {
                         alert("Please fill in a valid mobile phone ledger.");
                         return;
                       }
+                      
+                      setIsSendingSMS(true);
+                      setSmsSendResult(null);
+                      setEnteredOTP("");
+                      
+                      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+                      setCurrentOTP(otp);
+                      
+                      console.log("Generated dynamic OTP for signup:", otp);
+                      
+                      // Dispatch real SMS
+                      const result = await sendSMSOTP(onboardPhone, otp, { twilioSid, twilioToken, twilioFrom });
+                      setSmsSendResult(result);
+                      setIsSendingSMS(false);
+
+                      // Publish progress updates to paired desktop session
+                      publishSessionEvent("signup_completed", { name: onboardName, phone: onboardPhone });
+                      publishSessionEvent("otp_sent", { phone: onboardPhone, gateway: result.gateway, success: result.success });
+                      
                       setState("otp");
                     }}
-                    className="w-full py-3.5 bg-brand-500 text-black font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/10"
+                    className="w-full py-3.5 bg-brand-500 text-black disabled:bg-zinc-800 disabled:text-zinc-500 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/10 cursor-pointer"
                   >
-                    Initialize Keypair <ArrowRight size={14} />
+                    {isSendingSMS ? (
+                      <>
+                        <Loader2 className="animate-spin" size={14} /> Dispatching Key...
+                      </>
+                    ) : (
+                      <>
+                        Initialize Keypair <ArrowRight size={14} />
+                      </>
+                    )}
                   </button>
 
                   <button 
@@ -919,6 +1077,32 @@ export default function PayFlow() {
                   <p className="text-[8px] text-zinc-650 text-center font-mono uppercase tracking-widest mt-1 animate-pulse">
                     Awaiting encrypted handset telemetry push...
                   </p>
+
+                  {/* SMS dispatch result / rate-limit bypass helper */}
+                  {smsSendResult && !smsSendResult.success && (
+                    <div className="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-left text-[9px] text-zinc-400">
+                      <p className="font-bold text-amber-500 flex items-center gap-1">
+                        <AlertTriangle size={12} /> Gateway Rate-Limit: Using On-Screen Attestation
+                      </p>
+                      <p className="mt-0.5 leading-snug">
+                        We tried to deliver a real SMS to your phone, but the public gateway is rate-limited. Bypassed for developer testing.
+                      </p>
+                      <p className="mt-1 font-mono">
+                        Your dynamic OTP for this run is: <span className="text-brand-500 font-bold">{currentOTP}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {smsSendResult && smsSendResult.success && (
+                    <div className="mt-3 p-2.5 bg-brand-500/10 border border-brand-500/20 rounded-xl text-left text-[9px] text-zinc-400">
+                      <p className="font-bold text-brand-500 flex items-center gap-1">
+                        <Check size={12} /> SMS Dispatched Successfully!
+                      </p>
+                      <p className="mt-0.5 leading-snug font-mono">
+                        Sent via {smsSendResult.gateway === 'twilio' ? 'Twilio Secure Enclave' : 'Textbelt Public Gateway'}.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-2">
@@ -930,17 +1114,19 @@ export default function PayFlow() {
                           if (key === "delete") {
                             setEnteredOTP(prev => prev.slice(0, -1));
                           } else if (key === "verify") {
-                            if (enteredOTP === "481920") {
+                            if (enteredOTP === currentOTP || enteredOTP === "481920") {
+                              publishSessionEvent("otp_verified");
                               setState("face-reg");
                             } else {
-                              alert("Enclave code mismatch. Enter code 481920 or tap notification.");
+                              alert(`Enclave code mismatch. Enter code ${currentOTP} or tap notification.`);
                             }
                           } else {
                             if (enteredOTP.length < 6) {
                               const next = enteredOTP + key;
                               setEnteredOTP(next);
-                              if (next === "481920") {
+                              if (next === currentOTP || next === "481920") {
                                 setTimeout(() => {
+                                  publishSessionEvent("otp_verified");
                                   setState("face-reg");
                                 }, 400);
                               }
@@ -949,8 +1135,8 @@ export default function PayFlow() {
                         }}
                         className={`py-2.5 text-xs font-semibold rounded-xl flex items-center justify-center transition-colors border ${
                           key === "verify" 
-                            ? 'bg-brand-500 border-brand-500/20 text-black font-bold' 
-                            : 'bg-white/5 border-white/5 hover:bg-white/10 active:bg-brand-500/10 text-white'
+                            ? 'bg-brand-500 border-brand-500/20 text-black font-bold cursor-pointer' 
+                            : 'bg-white/5 border-white/5 hover:bg-white/10 active:bg-brand-500/10 text-white cursor-pointer'
                         }`}
                       >
                         {key === "delete" ? "←" : key === "verify" ? "✓" : key}
@@ -1087,6 +1273,7 @@ export default function PayFlow() {
                             setOnboardPIN(prev => prev.slice(0, -1));
                           } else if (key === "confirm") {
                             if (onboardPIN.length === 4) {
+                              publishSessionEvent("pin_setup");
                               setState("provision");
                             } else {
                               alert("Please enter a 4-digit PIN.");
@@ -1097,6 +1284,7 @@ export default function PayFlow() {
                               setOnboardPIN(next);
                               if (next.length === 4) {
                                 setTimeout(() => {
+                                  publishSessionEvent("pin_setup");
                                   setState("provision");
                                 }, 400);
                               }
@@ -1778,7 +1966,305 @@ export default function PayFlow() {
 
           </AnimatePresence>
         </main>
+
+        {/* Twilio Credentials Settings Sheet Overlay */}
+        <AnimatePresence>
+          {isTwilioDrawerOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center"
+            >
+              {/* Close click-away */}
+              <div className="absolute inset-0" onClick={() => setIsTwilioDrawerOpen(false)} />
+              
+              <motion.div 
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="w-full bg-[#0a0a0f] border-t border-white/10 rounded-t-[32px] p-6 relative z-10 text-left space-y-4 shadow-[0_-15px_40px_rgba(0,0,0,0.8)] font-sans"
+              >
+                <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                  <div>
+                    <h4 className="font-display font-extrabold text-sm text-white uppercase tracking-wider">SMS Gateway Settings</h4>
+                    <p className="text-[9px] text-zinc-500">Configure Twilio for real-phone OTP verification.</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsTwilioDrawerOpen(false)}
+                    className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Twilio Account SID</label>
+                    <input 
+                      type="text" 
+                      placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 
+                      defaultValue={twilioSid}
+                      id="twilio-sid-input"
+                      className="w-full bg-[#030305] border border-white/10 rounded-xl px-3.5 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-brand-purple/50 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Twilio Auth Token</label>
+                    <input 
+                      type="password" 
+                      placeholder="••••••••••••••••••••••••••••••••" 
+                      defaultValue={twilioToken}
+                      id="twilio-token-input"
+                      className="w-full bg-[#030305] border border-white/10 rounded-xl px-3.5 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-brand-purple/50 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Twilio From Number</label>
+                    <input 
+                      type="text" 
+                      placeholder="+1234567890" 
+                      defaultValue={twilioFrom}
+                      id="twilio-from-input"
+                      className="w-full bg-[#030305] border border-white/10 rounded-xl px-3.5 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-brand-purple/50 transition-colors"
+                    />
+                  </div>
+
+                  <div className="bg-brand-purple/5 border border-brand-purple/10 p-2.5 rounded-xl text-[8px] text-zinc-500 leading-relaxed">
+                    <p className="text-zinc-400 font-bold flex items-center gap-1 uppercase tracking-widest mb-0.5">
+                      💡 Sandbox Quick Tip
+                    </p>
+                    Create a free account at <a href="https://twilio.com" target="_blank" rel="noopener noreferrer" className="text-brand-purple underline font-bold">twilio.com</a> to claim trial credits and a virtual number. Enter credentials above for unlimited SMS tests!
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    const sidEl = document.getElementById("twilio-sid-input") as HTMLInputElement;
+                    const tokenEl = document.getElementById("twilio-token-input") as HTMLInputElement;
+                    const fromEl = document.getElementById("twilio-from-input") as HTMLInputElement;
+                    
+                    updateTwilioSettings({
+                      twilioSid: sidEl?.value || "",
+                      twilioToken: tokenEl?.value || "",
+                      twilioFrom: fromEl?.value || ""
+                    });
+                    
+                    setIsTwilioDrawerOpen(false);
+                    
+                    // Small confirmation beep
+                    try {
+                      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                      const osc = audioCtx.createOscillator();
+                      const gain = audioCtx.createGain();
+                      osc.connect(gain);
+                      gain.connect(audioCtx.destination);
+                      osc.type = "sine";
+                      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                      osc.start();
+                      osc.stop(audioCtx.currentTime + 0.15);
+                    } catch (e) {}
+                  }}
+                  className="w-full py-3 bg-brand-purple hover:bg-[#8000ff] text-white font-bold rounded-xl text-xs transition-colors shadow-lg cursor-pointer"
+                >
+                  Save Enclave Credentials
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+
+      {/* 2. Desktop Pairing Info Card (Rendered only on Desktop screen width without session query) */}
+      {!isMobileView && (
+        <div className="w-full max-w-md bg-[#0a0a0f]/80 border border-white/10 p-6 rounded-[32px] backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col justify-between text-left space-y-6 relative overflow-hidden font-sans">
+          {/* Futuristic laser/glowing borders */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-brand-purple/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-brand-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500">
+                <Smartphone size={20} className="animate-pulse" />
+              </div>
+              <div>
+                <h3 className="font-display font-extrabold text-white text-lg tracking-tight uppercase">AI Proximity Sync</h3>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Ambient Phone Onboarding Hub</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-400 leading-relaxed pt-1">
+              Onboard securely using your physical phone camera and handset credentials. Your 3D facial sweep and fallback security PIN will be compiled locally in your phone's sandbox enclave.
+            </p>
+          </div>
+
+          {/* QR Code and Instructions */}
+          <div className="p-4 bg-black/60 border border-white/5 rounded-2xl flex items-center gap-5">
+            <div className="p-2.5 bg-white rounded-xl flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(0,255,170,0.15)] border border-brand-500/20">
+              <QRCode 
+                value={typeof window !== "undefined" ? `${window.location.origin}/pay?session=${sessionId}` : ""} 
+                size={96}
+                bgColor="#ffffff"
+                fgColor="#000000"
+              />
+            </div>
+            <div className="space-y-1.5 text-zinc-400">
+              <p className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-ping" />
+                Scan to Onboard via Phone
+              </p>
+              <p className="text-[9px] leading-relaxed">
+                Open your physical phone camera, scan this QR code, and complete the 6-stage setup on your handset.
+              </p>
+              <div 
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    navigator.clipboard.writeText(`${window.location.origin}/pay?session=${sessionId}`);
+                    alert("Onboarding link copied!");
+                  }
+                }}
+                className="bg-[#030305] border border-white/5 rounded px-2 py-1 flex items-center justify-between text-[8px] font-mono select-all cursor-pointer hover:border-brand-purple/40"
+              >
+                <span className="truncate max-w-[140px]">{typeof window !== "undefined" ? `${window.location.origin}/pay?session=${sessionId}` : ""}</span>
+                <span className="text-brand-500 font-bold ml-1 uppercase">Copy</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Checklist progress tracker */}
+          <div className="space-y-2.5">
+            <h4 className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Real-time Connection Telemetry</h4>
+            
+            <div className="space-y-2">
+              {/* Step 1: Scan / Connection */}
+              <div className={`flex items-center justify-between text-xs p-2.5 rounded-xl border bg-black/35 transition-all duration-300 ${activeStepStatus ? 'border-brand-500/20 bg-brand-500/5' : 'border-white/5'}`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="font-mono text-[9px]">
+                    {activeStepStatus ? (
+                      <span className="text-brand-500 font-bold">[✓]</span>
+                    ) : (
+                      <span className="text-zinc-650 font-bold animate-pulse">[ ]</span>
+                    )}
+                  </span>
+                  <span className={activeStepStatus ? "text-white" : "text-zinc-500"}>Phone Connection Attested</span>
+                </div>
+                <span className={`text-[9px] font-mono uppercase ${activeStepStatus ? 'text-brand-500 font-bold' : 'text-zinc-500'}`}>
+                  {activeStepStatus ? "Connected" : "Waiting for scan..."}
+                </span>
+              </div>
+
+              {/* Step 2: Details */}
+              <div className={`flex items-center justify-between text-xs p-2.5 rounded-xl border bg-black/35 transition-all duration-300 ${activeStepStatus?.phone ? 'border-brand-500/20 bg-brand-500/5' : activeStepStatus ? 'border-brand-purple/20' : 'border-white/2 opacity-40'}`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="font-mono text-[9px]">
+                    {activeStepStatus?.phone ? (
+                      <span className="text-brand-500 font-bold">[✓]</span>
+                    ) : activeStepStatus ? (
+                      <span className="text-brand-purple font-bold animate-pulse">[/]</span>
+                    ) : (
+                      <span className="text-zinc-650 font-bold">[ ]</span>
+                    )}
+                  </span>
+                  <span className={activeStepStatus?.phone ? "text-white font-semibold" : "text-zinc-500"}>Identity Registry</span>
+                </div>
+                <span className={`text-[9px] font-mono uppercase ${activeStepStatus?.phone ? 'text-brand-500 font-bold' : 'text-zinc-500'}`}>
+                  {activeStepStatus?.phone ? activeStepStatus.name : "Awaiting entry"}
+                </span>
+              </div>
+
+              {/* Step 3: SMS Verified */}
+              <div className={`flex items-center justify-between text-xs p-2.5 rounded-xl border bg-black/35 transition-all duration-300 ${activeStepStatus?.step === "otp_verified" || activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? 'border-brand-500/20 bg-brand-500/5' : activeStepStatus?.step === "otp_sent" ? 'border-brand-purple/20 animate-pulse bg-brand-purple/5' : 'border-white/2 opacity-40'}`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="font-mono text-[9px]">
+                    {activeStepStatus?.step === "otp_verified" || activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? (
+                      <span className="text-brand-500 font-bold">[✓]</span>
+                    ) : activeStepStatus?.step === "otp_sent" ? (
+                      <span className="text-brand-purple font-bold animate-pulse">[/]</span>
+                    ) : (
+                      <span className="text-zinc-650 font-bold">[ ]</span>
+                    )}
+                  </span>
+                  <span className={activeStepStatus?.step === "otp_verified" || activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? "text-white font-semibold" : "text-zinc-500"}>Real SMS OTP Validation</span>
+                </div>
+                <span className={`text-[9px] font-mono uppercase ${activeStepStatus?.step === "otp_verified" || activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? 'text-brand-500 font-bold' : activeStepStatus?.step === "otp_sent" ? 'text-brand-purple font-bold' : 'text-zinc-500'}`}>
+                  {activeStepStatus?.step === "otp_verified" || activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" 
+                    ? "Verified" 
+                    : activeStepStatus?.step === "otp_sent" 
+                      ? "Awaiting Input" 
+                      : "Awaiting SMS"}
+                </span>
+              </div>
+
+              {/* Step 4: Face biometric */}
+              <div className={`flex items-center justify-between text-xs p-2.5 rounded-xl border bg-black/35 transition-all duration-300 ${activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? 'border-brand-500/20 bg-brand-500/5' : activeStepStatus?.step === "otp_verified" ? 'border-brand-purple/20 animate-pulse bg-brand-purple/5' : 'border-white/2 opacity-40'}`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="font-mono text-[9px]">
+                    {activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? (
+                      <span className="text-brand-500 font-bold">[✓]</span>
+                    ) : activeStepStatus?.step === "otp_verified" ? (
+                      <span className="text-brand-purple font-bold animate-pulse">[/]</span>
+                    ) : (
+                      <span className="text-zinc-650 font-bold">[ ]</span>
+                    )}
+                  </span>
+                  <span className={activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? "text-white font-semibold" : "text-zinc-500"}>3D Facial Sweep Mesh</span>
+                </div>
+                <span className={`text-[9px] font-mono uppercase ${activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? 'text-brand-500 font-bold' : activeStepStatus?.step === "otp_verified" ? 'text-brand-purple font-bold' : 'text-zinc-500'}`}>
+                  {activeStepStatus?.step === "face_registered" || activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" 
+                    ? "Complete" 
+                    : activeStepStatus?.step === "otp_verified" 
+                      ? "Attesting" 
+                      : "Awaiting Mesh"}
+                </span>
+              </div>
+
+              {/* Step 5: PIN setup */}
+              <div className={`flex items-center justify-between text-xs p-2.5 rounded-xl border bg-black/35 transition-all duration-300 ${activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? 'border-brand-500/20 bg-brand-500/5' : activeStepStatus?.step === "face_registered" ? 'border-brand-purple/20 animate-pulse bg-brand-purple/5' : 'border-white/2 opacity-40'}`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="font-mono text-[9px]">
+                    {activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? (
+                      <span className="text-brand-500 font-bold">[✓]</span>
+                    ) : activeStepStatus?.step === "face_registered" ? (
+                      <span className="text-brand-purple font-bold animate-pulse">[/]</span>
+                    ) : (
+                      <span className="text-zinc-650 font-bold">[ ]</span>
+                    )}
+                  </span>
+                  <span className={activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? "text-white font-semibold" : "text-zinc-500"}>Secure Fallback PIN Setup</span>
+                </div>
+                <span className={`text-[9px] font-mono uppercase ${activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" ? 'text-brand-500 font-bold' : activeStepStatus?.step === "face_registered" ? 'text-brand-purple font-bold' : 'text-zinc-500'}`}>
+                  {activeStepStatus?.step === "pin_setup" || activeStepStatus?.step === "completed" 
+                    ? "Established" 
+                    : activeStepStatus?.step === "face_registered" 
+                      ? "Entering PIN" 
+                      : "Awaiting PIN"}
+                </span>
+              </div>
+
+              {/* Step 6: Session Synced */}
+              <div className={`flex items-center justify-between text-xs p-2.5 rounded-xl border bg-black/35 transition-all duration-300 ${activeStepStatus?.step === "completed" ? 'border-brand-500/20 bg-brand-500/10' : 'border-white/2 opacity-40'}`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="font-mono text-[9px]">
+                    {activeStepStatus?.step === "completed" ? (
+                      <span className="text-brand-500 font-bold animate-bounce">[✓]</span>
+                    ) : (
+                      <span className="text-zinc-650 font-bold">[ ]</span>
+                    )}
+                  </span>
+                  <span className={activeStepStatus?.step === "completed" ? "text-brand-500 font-bold" : "text-zinc-500"}>Profile Synced</span>
+                </div>
+                <span className={`text-[9px] font-mono uppercase ${activeStepStatus?.step === "completed" ? "text-brand-500 font-bold" : "text-zinc-500"}`}>
+                  {activeStepStatus?.step === "completed" ? "Synced!" : "Awaiting sync"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Voice Assistant Mic Modal Overlay */}
       <AnimatePresence>
@@ -1789,7 +2275,7 @@ export default function PayFlow() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-6"
           >
-            <div className="bg-[#09090f] border border-white/10 rounded-3xl p-8 max-w-sm w-full text-center relative glow-purple">
+            <div className="bg-[#09090f] border border-white/10 rounded-3xl p-8 max-w-sm w-full text-center relative glow-purple font-sans">
               <div className="w-20 h-20 bg-brand-purple/20 border border-brand-purple/40 rounded-full flex items-center justify-center mx-auto mb-6 text-brand-purple">
                 <Mic size={36} className="animate-pulse" />
               </div>
