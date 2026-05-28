@@ -671,31 +671,41 @@ export default function PayFlow() {
   }, [fingerHolding, bioMethod, state]);
 
   return (
-    <div className="min-h-screen bg-[#030303] flex flex-col md:flex-row justify-center items-center gap-8 lg:gap-16 p-4 selection:bg-brand-500/30 relative">
+    <div className={`min-h-screen bg-[#030303] flex flex-col md:flex-row justify-center items-center selection:bg-brand-500/30 relative ${
+      isMobileView ? "p-0" : "p-4 gap-8 lg:gap-16"
+    }`}>
       
       {/* Dynamic Cyber background grid */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,255,170,0.03)_0%,transparent_70%)] pointer-events-none" />
 
       {/* Main Frame Shell resembling phone interface */}
-      <div className="w-full max-w-[420px] aspect-[9/19.5] bg-[#09090f] border border-white/10 rounded-[48px] overflow-hidden flex flex-col relative shadow-[0_25px_60px_rgba(0,0,0,0.8)] outline outline-8 outline-zinc-900 shrink-0">
+      <div className={`w-full flex flex-col relative shrink-0 transition-all duration-300 ${
+        isMobileView 
+          ? "min-h-screen bg-[#060608]" 
+          : "max-w-[420px] aspect-[9/19.5] bg-[#09090f] border border-white/10 rounded-[48px] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] outline outline-8 outline-zinc-900"
+      }`}>
         
-        {/* Dynamic Notch */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-black rounded-full flex items-center justify-between px-4 z-50 border border-white/5">
-          <div className="w-3 h-3 rounded-full bg-zinc-900 border border-brand-500/20 flex items-center justify-center">
-            <div className="w-1 h-1 bg-brand-500 rounded-full" />
+        {/* Dynamic Notch (Rendered only on Desktop) */}
+        {!isMobileView && (
+          <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-black rounded-full flex items-center justify-between px-4 z-50 border border-white/5">
+            <div className="w-3 h-3 rounded-full bg-zinc-900 border border-brand-500/20 flex items-center justify-center">
+              <div className="w-1 h-1 bg-brand-500 rounded-full" />
+            </div>
+            <div className="flex gap-1 items-center">
+              <span className="text-[9px] font-bold text-zinc-500 font-mono">LTE</span>
+              {settings.offlineMode ? (
+                <WifiOff size={10} className="text-amber-500" />
+              ) : (
+                <Wifi size={10} className="text-brand-500" />
+              )}
+            </div>
           </div>
-          <div className="flex gap-1 items-center">
-            <span className="text-[9px] font-bold text-zinc-500 font-mono">LTE</span>
-            {settings.offlineMode ? (
-              <WifiOff size={10} className="text-amber-500" />
-            ) : (
-              <Wifi size={10} className="text-brand-500" />
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Mobile Header bar */}
-        <header className="w-full pt-12 px-6 pb-4 flex items-center justify-between z-30">
+        <header className={`w-full px-6 pb-4 flex items-center justify-between z-30 ${
+          isMobileView ? "pt-6" : "pt-12"
+        }`}>
           {state !== "success" && state !== "failed" ? (
             <button 
               onClick={() => {
