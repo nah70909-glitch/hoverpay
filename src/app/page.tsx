@@ -370,7 +370,7 @@ export default function Home() {
                   {simState === "processing" && (
                     <div className="w-full flex-1 flex flex-col justify-between items-center py-2">
                       <div className="w-full flex justify-between items-center text-[10px] text-zinc-500 font-mono">
-                        <span>Enclave Session Vault</span>
+                        <span>Secure Transaction Vault</span>
                         <span>Sealing...</span>
                       </div>
 
@@ -447,9 +447,9 @@ export default function Home() {
 
                 {/* Simulated Telemetry Log Panel */}
                 <div className="mt-4 p-3 bg-black rounded-xl border border-white/5 font-mono text-[9px] text-zinc-500 text-left h-24 overflow-y-auto space-y-0.5">
-                  <p className="text-brand-500 font-bold uppercase tracking-wider text-[8px] mb-1">Telemetry Enclave Logs</p>
+                  <p className="text-brand-500 font-bold uppercase tracking-wider text-[8px] mb-1">Transaction Security Logs</p>
                   {simLogs.length === 0 ? (
-                    <p className="text-zinc-600 italic">No telemetry data. Click 'Simulate Ambient Pay' to run walkthrough...</p>
+                    <p className="text-zinc-600 italic">No transaction security data. Click 'Simulate Ambient Pay' to run walkthrough...</p>
                   ) : (
                     simLogs.map((log, idx) => (
                       <p key={idx}>&gt; {log}</p>
@@ -508,7 +508,7 @@ export default function Home() {
             <FeatureCard 
               icon={<Wifi className="text-brand-500" size={24} />}
               title="Dual Offline Voucher Routing"
-              desc="No cellular connection? HoverPay uses encrypted offline voucher pools verified by secure enclaves to resolve payments offline."
+              desc="No cellular connection? HoverPay uses encrypted offline voucher pools verified by secure on-device hardware to resolve payments offline."
             />
             <FeatureCard 
               icon={<Lock className="text-brand-500" size={24} />}
@@ -567,7 +567,7 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Vertical Real-Time Visual Telemetry Panel */}
+            {/* Vertical Real-Time Transaction Panel */}
             <div className="lg:col-span-2 bg-[#09090f] border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl min-h-[380px] flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
               
@@ -577,7 +577,7 @@ export default function Home() {
                   <span className="h-2 w-2 rounded-full bg-brand-500 animate-pulse" />
                   AMBIENT NODE IN-RANGE
                 </span>
-                <span>TELEMETRY FEED v1.9</span>
+                <span>TRANSACTION FEED v1.9</span>
               </div>
 
               {/* Dynamic Visual Mock per Vertical */}
@@ -590,13 +590,13 @@ export default function Home() {
                       </div>
                       <h3 className="text-xl font-bold text-white font-display">Bypass Metro Turnstiles</h3>
                       <p className="text-xs text-zinc-400 leading-relaxed">
-                        Pass through Delhi or Mumbai metro gates by waving your hand or ring. Telemetry maps your path, connects to the transit beacon, and clears the gate in 0.12s.
+                        Pass through Delhi or Mumbai metro gates by waving your hand or ring. Proximity maps your path, connects to the transit beacon, and clears the gate in 0.12s.
                       </p>
                     </div>
                     <div className="bg-[#030305] border border-white/5 rounded-2xl p-4 font-mono text-[10px] space-y-2 text-zinc-500 text-left">
                       <p className="text-brand-500 font-bold">&gt; RSSI Signal Lock: -56dBm (Strong)</p>
                       <p>&gt; Merchant: DMRC Gate 4 Entry</p>
-                      <p>&gt; Wearable payload verified via Enclave</p>
+                      <p>&gt; Wearable payload verified via Secure Cryptography</p>
                       <p>&gt; UPI Ref: HPX77810294</p>
                       <p className="text-white font-bold">&gt; Gate clearance: GRANTED (₹45.00 settled)</p>
                     </div>
@@ -617,7 +617,7 @@ export default function Home() {
                     <div className="bg-[#030305] border border-white/5 rounded-2xl p-4 font-mono text-[10px] space-y-2 text-zinc-500 text-left">
                       <p className="text-brand-purple font-bold">&gt; Proximity anchor connected: SOC-STORE-1</p>
                       <p>&gt; Cart identified: 3 items (Milk, Bread, Butter)</p>
-                      <p>&gt; Identity check: Enclave Hash matched</p>
+                      <p>&gt; Identity check: Security Key matched</p>
                       <p>&gt; Network: cleared via primary UPI Lite</p>
                       <p className="text-white font-bold">&gt; Settlement: ₹210.00 (Success)</p>
                     </div>
@@ -828,7 +828,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Trust & Security Enclave Pipeline Diagram */}
+      {/* Trust & Security Hardware Pipeline Diagram */}
       <section className="py-24 px-6 relative" id="architecture">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-20">
@@ -838,7 +838,7 @@ export default function Home() {
               className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-purple/20 bg-brand-purple/5 text-xs font-semibold text-brand-purple mb-4"
             >
               <ShieldCheck size={12} />
-              <span>MILITARY-GRADE ENCLAVE ARCHITECTURE</span>
+              <span>ENTERPRISE-GRADE SECURE ARCHITECTURE</span>
             </motion.div>
             <h2 className="font-display text-3xl sm:text-5xl font-extrabold text-white mb-4">Trust Engineering</h2>
             <p className="text-zinc-400 text-lg">Every transaction is fully isolated, encrypted, and processed directly over standard NPCI/UPI networks.</p>
@@ -862,9 +862,9 @@ export default function Home() {
                 { 
                   step: 2, 
                   title: "Biometric Verification", 
-                  sub: "Secure Enclave Match",
+                  sub: "Secure Hardware Match",
                   badge: "Hardware Sealed", 
-                  desc: "Validates gesture landmarks against secure enclave vaults using hardware-backed cryptographic checks.",
+                  desc: "Validates gesture landmarks against secure hardware vaults using hardware-backed cryptographic checks.",
                   icon: "👁️",
                   color: "border-brand-purple/30 text-brand-purple"
                 },
@@ -881,7 +881,7 @@ export default function Home() {
                   step: 4, 
                   title: "UPI Lite Infrastructure", 
                   sub: "Sub-Second Router",
-                  badge: "Pre-loaded Enclave", 
+                  badge: "Pre-loaded Secure Storage", 
                   desc: "Bypasses slow gateway roundtrips by routing tokens through localized secure cache vouchers.",
                   icon: "⚡",
                   color: "border-emerald-500/30 text-emerald-500"
@@ -932,7 +932,7 @@ export default function Home() {
                 <p className="text-xs font-mono text-brand-500 font-bold uppercase tracking-wider">SECURE PIPELINE CLEARANCE LOGS</p>
                 <p className="text-xs text-zinc-300 font-mono leading-relaxed mt-1">
                   {activePipeStep === 0 && "LOG: [Gesture Layer] Hand pose points read locally inside canvas context. Coords normalized against standard hand shapes in 0.04s. Zero imagery stored or transmitted."}
-                  {activePipeStep === 1 && "LOG: [Biometric verification] Checking device key integrity with Enclave secure key store. Signature verification complete. Session ID validated."}
+                  {activePipeStep === 1 && "LOG: [Biometric verification] Checking device key integrity with secure hardware key store. Signature verification complete. Session ID validated."}
                   {activePipeStep === 2 && "LOG: [Encrypted Token] ZKS key generation initialized. Ephemeral hash envelop generated: AES-GCM-256 encrypted. Original account identifiers completely isolated."}
                   {activePipeStep === 3 && "LOG: [UPI Lite Gateway] Routing payload through local secure cache ledger. Preloaded token pools bypass third-party server bottlenecks, reducing API latency to <0.3s."}
                   {activePipeStep === 4 && "LOG: [NPCI Bank Settlement] Payload authorized. Cleared directly over national banking gateways. Transaction successfully settled in real-time."}
@@ -1042,7 +1042,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Developer Call to Action & SDK Sandbox */}
+      {/* Developer Call to Action & SDK Playground */}
       <section className="py-24 px-6 relative bg-gradient-to-b from-[#030303] to-brand-purple/10 border-t border-white/5" id="developers">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -1069,10 +1069,10 @@ export default function Home() {
                 
                 <div className="bg-[#030305] border border-white/5 rounded-2xl p-5 font-mono text-xs text-zinc-400 overflow-x-auto min-h-[180px]">
                   <p className="text-zinc-600 font-semibold mb-2">// 1. Import secure ambient payment client</p>
-                  <p className="text-brand-purple font-semibold">import <span className="text-white">HoverPayEnclave</span> from <span className="text-brand-500">'@hoverpay/sdk'</span>;</p>
+                  <p className="text-brand-purple font-semibold">import <span className="text-white">HoverPaySecure</span> from <span className="text-brand-500">'@hoverpay/sdk'</span>;</p>
                   <br />
                   <p className="text-zinc-600 font-semibold mb-2">// 2. Initiate sub-second ZKS session</p>
-                  <p className="text-brand-purple font-semibold">const <span className="text-white">session</span> = <span className="text-brand-500">await</span> HoverPayEnclave.<span className="text-white">initiate</span>({'{'}</p>
+                  <p className="text-brand-purple font-semibold">const <span className="text-white">session</span> = <span className="text-brand-500">await</span> HoverPaySecure.<span className="text-white">initiate</span>({'{'}</p>
                   <p className="pl-4">merchantId: <span className="text-brand-500">"STB-8890"</span>,</p>
                   <p className="pl-4">amount: <span className="text-white">340.00</span>,</p>
                   <p className="pl-4">currency: <span className="text-brand-500">"INR"</span></p>
@@ -1090,7 +1090,7 @@ export default function Home() {
             <div className="bg-[#09090f] border border-white/10 rounded-3xl p-6 text-left flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-center pb-4 border-b border-white/5 mb-6 text-xs text-zinc-500 font-mono">
-                  <span>LIVE CRYPTO SANDBOX RUNNER</span>
+                  <span>LIVE TRANSACTION RUNNER</span>
                   <span className="text-brand-500 font-bold">API STATUS: ONLINE</span>
                 </div>
 
@@ -1111,7 +1111,7 @@ export default function Home() {
                     <p className="pl-4">"status": <span className="text-white">"settled"</span>,</p>
                     <p className="pl-4">"txnRef": <span className="text-white">"438912889120"</span>,</p>
                     <p className="pl-4">"latencyMs": <span className="text-white">72</span>,</p>
-                    <p className="pl-4">"enclaveVerify": <span className="text-brand-500 font-bold">true</span></p>
+                    <p className="pl-4">"securityVerify": <span className="text-brand-500 font-bold">true</span></p>
                     <p className="text-emerald-400 font-bold">{'}'}</p>
                   </div>
                 </div>
@@ -1129,7 +1129,7 @@ export default function Home() {
               Launch Live App <Sparkles size={16} />
             </Link>
             <a href="#architecture" className="px-8 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/10 transition-all text-center">
-              Explore Enclave Specs
+              Explore Security Specs
             </a>
           </div>
         </div>

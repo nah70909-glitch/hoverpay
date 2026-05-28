@@ -88,7 +88,7 @@ export default function PayFlow() {
   const [modelLoading, setModelLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [faceScanningActive, setFaceScanningActive] = useState(false);
-  const [countdown, setCountdown] = useState(10); // 10-second secure enclave session
+  const [countdown, setCountdown] = useState(10); // 10-second secure authentication session
   
   // Scanning Progress States
   const [faceProgress, setFaceProgress] = useState(0);
@@ -511,7 +511,7 @@ export default function PayFlow() {
     };
   }, [state, faceLoginActive]);
 
-  // Secure Enclave Countdown Ticker
+  // Secure Authentication Countdown Ticker
   useEffect(() => {
     if (state !== "verify") return;
 
@@ -730,7 +730,7 @@ export default function PayFlow() {
           <div 
             onClick={() => setState("device-verify")}
             className="flex items-center gap-2 bg-[#030305] border border-white/5 px-4 py-1.5 rounded-full cursor-pointer hover:border-brand-purple/20 transition-colors animate-pulse"
-            title="Run Hardware Attestation"
+            title="Run Hardware Security Check"
           >
             <span className="h-2 w-2 rounded-full bg-brand-500 animate-pulse" />
             <span className="text-[10px] font-bold tracking-wider font-mono text-zinc-400 uppercase">
@@ -845,7 +845,7 @@ export default function PayFlow() {
                     </div>
                     <h3 className="font-display font-extrabold text-white text-lg tracking-tight uppercase">Create Account</h3>
                     <p className="text-[10px] text-zinc-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
-                      Attest a next-generation ambient wallet signature on top of UPI Lite.
+                      Set up your secure ambient touchless wallet on top of UPI Lite.
                     </p>
                   </div>
 
@@ -965,7 +965,7 @@ export default function PayFlow() {
                       {!cameraActive && (
                         <div className="absolute inset-0 bg-[#09090f] flex flex-col items-center justify-center text-zinc-500 z-10">
                           <Loader2 className="animate-spin text-brand-purple mb-2" size={20} />
-                          <span className="text-[8px] font-mono uppercase tracking-widest">Enclave Camera Opening...</span>
+                          <span className="text-[8px] font-mono uppercase tracking-widest">Secure Camera Opening...</span>
                         </div>
                       )}
 
@@ -1085,14 +1085,14 @@ export default function PayFlow() {
                   </div>
 
                   <p className="text-[8px] text-zinc-650 text-center font-mono uppercase tracking-widest mt-1 animate-pulse">
-                    Awaiting encrypted handset telemetry push...
+                    Awaiting encrypted device confirmation...
                   </p>
 
                   {/* SMS dispatch result / rate-limit bypass helper */}
                   {smsSendResult && !smsSendResult.success && (
                     <div className="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-left text-[9px] text-zinc-400">
                       <p className="font-bold text-amber-500 flex items-center gap-1">
-                        <AlertTriangle size={12} /> Gateway Rate-Limit: Using On-Screen Attestation
+                        <AlertTriangle size={12} /> Gateway Rate-Limit: Using On-Screen Code
                       </p>
                       <p className="mt-0.5 leading-snug">
                         We tried to deliver a real SMS to your phone, but the public gateway is rate-limited. Bypassed for developer testing.
@@ -1109,7 +1109,7 @@ export default function PayFlow() {
                         <Check size={12} /> SMS Dispatched Successfully!
                       </p>
                       <p className="mt-0.5 leading-snug font-mono">
-                        Sent via {smsSendResult.gateway === 'twilio' ? 'Twilio Secure Enclave' : 'Textbelt Public Gateway'}.
+                        Sent via {smsSendResult.gateway === 'twilio' ? 'Twilio Secure Gateway' : 'Textbelt Public Gateway'}.
                       </p>
                     </div>
                   )}
@@ -1128,7 +1128,7 @@ export default function PayFlow() {
                               publishSessionEvent("otp_verified");
                               setState("face-reg");
                             } else {
-                              alert(`Enclave code mismatch. Enter code ${currentOTP} or tap notification.`);
+                              alert(`Incorrect verification code. Enter code ${currentOTP} or tap notification.`);
                             }
                           } else {
                             if (enteredOTP.length < 6) {
@@ -1199,7 +1199,7 @@ export default function PayFlow() {
                       <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 mb-2">
                         <Eye size={22} />
                       </div>
-                      <p className="text-[10px] font-bold text-white uppercase tracking-widest font-mono">Face Mesh attestation</p>
+                      <p className="text-[10px] font-bold text-white uppercase tracking-widest font-mono">Face Biometric Sweep</p>
                       <button 
                         onClick={() => setFaceRegActive(true)}
                         className="mt-3 px-4 py-2 bg-brand-500 text-black font-extrabold text-[10px] uppercase tracking-wider rounded-lg hover:bg-brand-600 transition-colors"
@@ -1218,8 +1218,8 @@ export default function PayFlow() {
                       <p className="text-zinc-500 text-[7px] truncate mt-0.5">
                         {faceRegProgress < 30 && "> Mapping pupil tracking coordinates..."}
                         {faceRegProgress >= 30 && faceRegProgress < 60 && "> Tracing nose bridge & jawlines..."}
-                        {faceRegProgress >= 60 && faceRegProgress < 90 && "> Validating blink telemetry liveness..."}
-                        {faceRegProgress >= 90 && "> Signing hash certificate with UIDAI Lite..."}
+                        {faceRegProgress >= 60 && faceRegProgress < 90 && "> Verifying liveness check..."}
+                        {faceRegProgress >= 90 && "> Verifying with National Identity Database..."}
                       </p>
                     )}
                   </div>
@@ -1230,9 +1230,9 @@ export default function PayFlow() {
                     <ShieldCheck size={18} />
                   </div>
                   <div className="text-left">
-                    <p className="text-[10px] font-bold text-white uppercase tracking-wide">Privacy Attested</p>
+                    <p className="text-[10px] font-bold text-white uppercase tracking-wide">Privacy Guaranteed</p>
                     <p className="text-[8px] text-zinc-500 leading-snug">
-                      Your high-entropy facial signature mesh is cryptographically sealed in the browser's local sandbox enclave. No image data leaves this client.
+                      Your facial biometric signature is cryptographically sealed in the browser's local secure storage. No image data leaves this client.
                     </p>
                   </div>
                 </div>
@@ -1330,7 +1330,7 @@ export default function PayFlow() {
                     </div>
                     <h3 className="font-display font-extrabold text-white text-base tracking-wider uppercase">Provisioning Identity</h3>
                     <p className="text-[10px] text-zinc-500 mt-1 max-w-[200px] mx-auto">
-                      Attesting decentralization proofs and compiling secure keys on-device.
+                      Generating secure digital signatures and compiling keys on-device.
                     </p>
                   </div>
 
@@ -1339,21 +1339,21 @@ export default function PayFlow() {
                       <span className={provisionProgress > 20 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
                         {provisionProgress > 20 ? "[✓]" : "[ ]"}
                       </span>
-                      <span className={provisionProgress > 20 ? "text-white" : "text-zinc-500"}>Generating Enclave Cryptography Keys</span>
+                      <span className={provisionProgress > 20 ? "text-white" : "text-zinc-500"}>Generating Secure Authentication Keys</span>
                     </div>
 
                     <div className="flex items-center gap-2.5">
                       <span className={provisionProgress > 50 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
                         {provisionProgress > 50 ? "[✓]" : "[ ]"}
                       </span>
-                      <span className={provisionProgress > 50 ? "text-white" : "text-zinc-500"}>Attesting W3C WebAuthn credentials</span>
+                      <span className={provisionProgress > 50 ? "text-white" : "text-zinc-500"}>Setting up secure biometric vault</span>
                     </div>
 
                     <div className="flex items-center gap-2.5">
                       <span className={provisionProgress > 75 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
                         {provisionProgress > 75 ? "[✓]" : "[ ]"}
                       </span>
-                      <span className={provisionProgress > 75 ? "text-white" : "text-zinc-500"}>Generating Face ZK biometrics mesh</span>
+                      <span className={provisionProgress > 75 ? "text-white" : "text-zinc-500"}>Securing face biometric identity</span>
                     </div>
 
                     <div className="flex items-center gap-2.5">
@@ -1367,7 +1367,7 @@ export default function PayFlow() {
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-[9px] font-mono text-zinc-500">
-                    <span>SEALING TELEMETRY PACK...</span>
+                    <span>ENCRYPTING SECURE CREDENTIALS...</span>
                     <span className="text-brand-500">{provisionProgress}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -1396,7 +1396,7 @@ export default function PayFlow() {
                     </div>
                     <h3 className="font-display font-extrabold text-white text-lg tracking-tight uppercase">Recover PIN</h3>
                     <p className="text-[10px] text-zinc-500 mt-1 max-w-[240px] mx-auto leading-relaxed">
-                      Attest your on-device signature to dispatch an enclave security recovery packet.
+                      Verify your secure identity to dispatch a security recovery packet.
                     </p>
                   </div>
 
@@ -1465,9 +1465,9 @@ export default function PayFlow() {
                     <div className="w-14 h-14 rounded-full bg-brand-purple/10 border border-brand-purple/30 flex items-center justify-center mx-auto mb-4 text-brand-purple animate-pulse shadow-[0_0_20px_rgba(112,0,255,0.15)]">
                       <ShieldCheck size={24} />
                     </div>
-                    <h3 className="font-display font-extrabold text-white text-base tracking-wider uppercase">Hardware attestation</h3>
+                    <h3 className="font-display font-extrabold text-white text-base tracking-wider uppercase">Hardware security check</h3>
                     <p className="text-[10px] text-zinc-500 mt-1 max-w-[200px] mx-auto">
-                      Checking local eSIM and sandboxed environment integrity bounds.
+                      Checking local eSIM and secure environment integrity bounds.
                     </p>
                   </div>
 
@@ -1476,7 +1476,7 @@ export default function PayFlow() {
                       <span className={deviceProgress > 25 ? "text-brand-500 font-bold animate-pulse" : "text-zinc-750 font-bold"}>
                         {deviceProgress > 25 ? "[✓]" : "[ ]"}
                       </span>
-                      <span className={deviceProgress > 25 ? "text-white" : "text-zinc-500"}>Secure Enclave Check: SE-ACTIVE</span>
+                      <span className={deviceProgress > 25 ? "text-white" : "text-zinc-500"}>Secure Vault Check: ACTIVE</span>
                     </div>
 
                     <div className="flex items-center gap-2.5">
@@ -1504,7 +1504,7 @@ export default function PayFlow() {
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-[9px] font-mono text-zinc-500">
-                    <span>ATTESTING HARDWARE TRUST ENVIRONMENT...</span>
+                    <span>VERIFYING HARDWARE SECURITY BOUNDS...</span>
                     <span className="text-brand-purple font-bold">{deviceProgress}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -1527,7 +1527,7 @@ export default function PayFlow() {
                 className="flex-1 flex flex-col justify-between py-4"
               >
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-white font-display">Ambient Registry</h2>
+                  <h2 className="text-2xl font-bold tracking-tight text-white font-display">Nearby Merchants</h2>
                   <p className="text-xs text-zinc-500 mt-1">BLE Beacons detected within 5 meters.</p>
                   
                   {/* Radar Scan graphic */}
@@ -1710,7 +1710,7 @@ export default function PayFlow() {
 
                   {/* Timer Ticker Header HUD */}
                   <div className="absolute top-4 left-4 right-4 flex justify-between items-center bg-[#030305]/80 backdrop-blur border border-white/5 px-3 py-1.5 rounded-xl z-20">
-                    <span className="text-[9px] font-mono font-bold text-zinc-400">ENCLAVE TIMEOUT SESSION</span>
+                    <span className="text-[9px] font-mono font-bold text-zinc-400">AUTHENTICATION SESSION TIMEOUT</span>
                     <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${countdown <= 3 ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-brand-purple/20 text-brand-purple'}`}>
                       0:0{countdown}s
                     </span>
@@ -1877,7 +1877,7 @@ export default function PayFlow() {
                     </div>
                     <div className="text-right">
                       <p className="text-brand-500 font-bold">RISK: 0.002% (SECURE)</p>
-                      <p className="text-[9px] mt-0.5">Enclave Cryptography sealed</p>
+                      <p className="text-[9px] mt-0.5">Device Cryptography Sealed</p>
                     </div>
                   </div>
                 </div>
@@ -1944,7 +1944,7 @@ export default function PayFlow() {
                 <h2 className="text-2xl font-bold tracking-tight text-white font-display">Verification Failed</h2>
                 <p className="text-red-500 text-sm font-semibold mt-1">Biometric Handshake Reverted</p>
                 <p className="text-xs text-zinc-500 mt-2 max-w-[240px]">
-                  {failureReason || "HoverSecure closed the session because no face, fingerprint, or handpose matches were recorded inside the 10-second enclave window."}
+                  {failureReason || "HoverSecure closed the session because no face, fingerprint, or handpose matches were recorded inside the 10-second authentication window."}
                 </p>
 
                 {/* Error Hud specs */}
@@ -1958,7 +1958,7 @@ export default function PayFlow() {
                     <span className="text-red-500 font-bold">{failureReason.includes("Funds") ? "Insufficient Funds" : "Timed Out (Rejected)"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Local Enclave</span>
+                    <span>Secure Storage</span>
                     <span className="text-white">Sealed Integrity Lock</span>
                   </div>
                 </div>
@@ -2091,7 +2091,7 @@ export default function PayFlow() {
                   }}
                   className="w-full py-3 bg-brand-purple hover:bg-[#8000ff] text-white font-bold rounded-xl text-xs transition-colors shadow-lg cursor-pointer"
                 >
-                  Save Enclave Credentials
+                  Save SMS Gateway Credentials
                 </button>
               </motion.div>
             </motion.div>
@@ -2118,7 +2118,7 @@ export default function PayFlow() {
             </div>
 
             <p className="text-xs text-zinc-400 leading-relaxed pt-1">
-              Onboard securely using your physical phone camera and handset credentials. Your 3D facial sweep and fallback security PIN will be compiled locally in your phone's sandbox enclave.
+              Onboard securely using your physical phone camera and handset credentials. Your 3D facial sweep and fallback security PIN will be compiled locally in your phone's secure storage.
             </p>
           </div>
 
@@ -2170,7 +2170,7 @@ export default function PayFlow() {
                       <span className="text-zinc-650 font-bold animate-pulse">[ ]</span>
                     )}
                   </span>
-                  <span className={activeStepStatus ? "text-white" : "text-zinc-500"}>Phone Connection Attested</span>
+                  <span className={activeStepStatus ? "text-white" : "text-zinc-500"}>Phone Connection Verified</span>
                 </div>
                 <span className={`text-[9px] font-mono uppercase ${activeStepStatus ? 'text-brand-500 font-bold' : 'text-zinc-500'}`}>
                   {activeStepStatus ? "Connected" : "Waiting for scan..."}

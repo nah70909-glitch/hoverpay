@@ -454,7 +454,7 @@ export default function Dashboard() {
                     <div className="p-3 bg-white/5 border border-white/5 rounded-2xl text-left">
                       <p className="text-xs font-bold text-white flex items-center gap-1">🛡️ Cryptographic Shield</p>
                       <p className="text-[10px] text-zinc-400 leading-relaxed mt-1">
-                        Device secure enclave keypair has been verified. Fraud score: <strong className="text-brand-purple">0.001% (SECURE)</strong>.
+                        Device secure keypair has been verified. Fraud score: <strong className="text-brand-purple">0.001% (SECURE)</strong>.
                       </p>
                     </div>
                   </div>
@@ -492,7 +492,7 @@ export default function Dashboard() {
                       <p className="text-[9px] text-zinc-500 mt-1 font-mono">Expires: {card.expiry} • Masked ID Sealed</p>
                     </div>
                     <div className="bg-brand-500/10 text-brand-500 border border-brand-500/20 text-[9px] font-bold px-2 py-1 rounded">
-                      Enclave Lock
+                      Secure Vault Lock
                     </div>
                   </div>
                 </div>
@@ -652,7 +652,7 @@ export default function Dashboard() {
 
                 {/* Biometric strength */}
                 <div className="flex flex-col gap-2">
-                  <h5 className="text-xs font-semibold text-white">Biometric Enclave Level</h5>
+                  <h5 className="text-xs font-semibold text-white">Biometric Security Level</h5>
                   <div className="grid grid-cols-3 gap-2 bg-black p-1 rounded-xl border border-white/5 text-center text-[10px]">
                     {['none', 'finger', 'face'].map(level => (
                       <button 

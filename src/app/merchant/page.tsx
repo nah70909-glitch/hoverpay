@@ -162,7 +162,7 @@ export default function MerchantDashboard() {
           
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white font-display">Sales Terminal Metrics</h1>
-            <p className="text-xs text-zinc-500 mt-1">Real-time point of sale telemetry details.</p>
+            <p className="text-xs text-zinc-500 mt-1">Real-time point of sale transaction details.</p>
           </div>
 
           {/* Stats row */}
@@ -290,7 +290,7 @@ export default function MerchantDashboard() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-white">Prathik (HoverID verified)</p>
-                    <p className="text-[9px] text-brand-500 font-mono mt-0.5">Telemetry Match: 99.82% Confidence</p>
+                    <p className="text-[9px] text-brand-500 font-mono mt-0.5">Customer Proximity Lock: 99.82% Confidence</p>
                   </div>
                 </div>
               </div>
